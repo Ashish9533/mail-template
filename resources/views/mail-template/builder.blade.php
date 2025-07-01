@@ -7,6 +7,9 @@
     <title>Mail Template Builder</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Allura&family=Pacifico&display=swap" rel="stylesheet">
     
     <style>
         /* Enhanced Sticker Styles */
@@ -236,6 +239,268 @@
         .email-component.selected .draggable-image {
             border-color: #3b82f6;
         }
+        
+        /* Enhanced Heading Styles */
+        .draggable-heading {
+            transition: all 0.2s ease;
+            min-height: 30px;
+            min-width: 50px;
+            position: relative;
+        }
+        
+        .draggable-heading:hover {
+            background: rgba(59, 130, 246, 0.05) !important;
+        }
+        
+        .draggable-heading:focus {
+            background: rgba(59, 130, 246, 0.1) !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+            cursor: text !important;
+        }
+        
+        .draggable-heading[contenteditable="true"]:empty:before {
+            content: attr(data-placeholder);
+            color: #9ca3af;
+            font-style: italic;
+            pointer-events: none;
+        }
+        
+        /* Heading drag handle */
+        .heading-drag-handle {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            user-select: none;
+            line-height: 1;
+            letter-spacing: -1px;
+        }
+        
+        .heading-drag-handle:hover {
+            background: #2563eb !important;
+            transform: scale(1.15) !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+        
+        .heading-drag-handle:active {
+            background: #1d4ed8 !important;
+            transform: scale(1.05) !important;
+        }
+        
+        /* Position indicator for dragged headings */
+        .draggable-heading.dragging {
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4) !important;
+            z-index: 1000 !important;
+        }
+        
+        /* Enhanced heading component wrapper */
+        .email-component[data-component-type="heading"] {
+            min-height: 60px;
+            display: flex;
+            align-items: flex-start;
+            overflow: visible;
+        }
+        
+        .email-component[data-component-type="heading"]:hover {
+            background: rgba(59, 130, 246, 0.02);
+            border-radius: 4px;
+        }
+        
+        /* Transform-based positioning for smooth dragging */
+        .draggable-heading.drag-transform {
+            transition: none !important;
+        }
+        
+        /* Drag cursor states */
+        .draggable-heading.drag-mode {
+            cursor: grab !important;
+        }
+        
+        .draggable-heading.drag-mode:active {
+            cursor: grabbing !important;
+        }
+        
+        /* Responsive heading adjustments */
+        @media (max-width: 768px) {
+            .draggable-heading {
+                font-size: 18px !important;
+            }
+            
+            .heading-drag-handle {
+                width: 18px !important;
+                height: 18px !important;
+                font-size: 9px !important;
+            }
+        }
+        
+        /* Text selection styles for headings */
+        .draggable-heading::selection {
+            background: rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Heading level visual indicators in properties */
+        .heading-level-preview {
+            font-weight: bold;
+            margin-left: 8px;
+            color: #6b7280;
+        }
+        
+        /* Smooth drag feedback */
+        .heading-drag-active {
+            pointer-events: none;
+            user-select: none;
+        }
+        
+        /* Container positioning context */
+        .email-component[data-component-type="heading"] {
+            position: relative;
+            contain: layout;
+        }
+        
+        /* Enhanced container styles for better heading positioning */
+        .droppable-container {
+            position: relative;
+            min-height: 50px;
+        }
+        
+        .droppable-container:hover {
+            background: rgba(59, 130, 246, 0.02);
+            border-color: rgba(59, 130, 246, 0.2) !important;
+        }
+        
+        /* Visual feedback for heading positioning within containers */
+        .droppable-container.heading-drag-active {
+            background: rgba(59, 130, 246, 0.08) !important;
+            border: 2px dashed rgba(59, 130, 246, 0.4) !important;
+        }
+        
+        .droppable-container.heading-drag-active::after {
+            content: 'Heading positioning area';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            font-size: 10px;
+            color: rgba(59, 130, 246, 0.7);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2px 6px;
+            border-radius: 3px;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        /* Better visibility for nested headings */
+        .droppable-container .email-component[data-component-type="heading"] {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .droppable-container .draggable-heading {
+            position: relative;
+            z-index: 3;
+        }
+        
+        /* Enhanced drag handle visibility in containers */
+        .droppable-container .heading-drag-handle {
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        /* Enhanced Text Component Styles */
+        .email-text {
+            transition: all 0.2s ease;
+        }
+        
+        .email-text:hover {
+            transform: translateY(-1px);
+        }
+        
+        .email-text[contenteditable="true"]:empty:before {
+            content: attr(data-placeholder);
+            color: #9ca3af;
+            font-style: italic;
+            pointer-events: none;
+        }
+        
+        .email-text::selection {
+            background: rgba(16, 185, 129, 0.3);
+        }
+        
+        /* Enhanced Signature Styles */
+        .email-signature {
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .email-signature:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+        }
+        
+        .signature-content {
+            transition: all 0.2s ease;
+        }
+        
+        .signature-content:focus {
+            transform: none !important;
+        }
+        
+        .signature-content[contenteditable="true"]:empty:before {
+            content: attr(data-placeholder);
+            color: #9ca3af;
+            font-style: italic;
+            pointer-events: none;
+        }
+        
+        .signature-content::selection {
+            background: rgba(245, 158, 11, 0.3);
+        }
+        
+        /* Visual improvements for the signature component item */
+        .component-item[data-component="signature"] {
+            background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+            border-color: #f59e0b;
+        }
+        
+        .component-item[data-component="signature"]:hover {
+            background: linear-gradient(135deg, #fef0c7 0%, #fed0a4 100%);
+            border-color: #d97706;
+            transform: scale(1.02);
+        }
+        
+        /* Signature Creator Modal Styles */
+        .tab-button {
+            transition: all 0.2s ease;
+        }
+        
+        .tab-button.active {
+            background: #3b82f6 !important;
+            color: white !important;
+        }
+        
+        .tab-button:not(.active):hover {
+            background: #e5e7eb !important;
+            color: #374151 !important;
+        }
+        
+        .tab-content {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        #signature-canvas {
+            touch-action: none;
+        }
+        
+        #typed-signature-preview {
+            transition: all 0.3s ease;
+        }
+        
+        .signature-font-preview {
+            font-size: 24px;
+            color: #1f2937;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -364,6 +629,11 @@
                                      data-component="table" draggable="true">
                                     <i class="fas fa-table text-gray-500"></i>
                                     <span class="text-xs block mt-1">Table</span>
+                                </div>
+                                <div class="component-item cursor-pointer bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 p-3 rounded-md border-2 border-dashed border-amber-300 transition-all"
+                                     data-component="signature" draggable="true">
+                                    <i class="fas fa-signature text-amber-600"></i>
+                                    <span class="text-xs block mt-1 text-amber-700 font-medium">Signature</span>
                                 </div>
                             </div>
                         </div>
@@ -553,7 +823,7 @@
                         <!-- Drop Zones -->
                         <div id="drop-zones" class="absolute inset-0 pointer-events-none" style="z-index: 2;"></div>
                         
-                        <div id="email-canvas" class="relative min-h-full p-4 border-2 border-dashed border-gray-300" style="z-index: 3;">
+                        <div id="email-canvas" class="relative min-h-screen p-4 border-2 border-dashed border-gray-300" style="z-index: 3;">
                             <div class="text-center text-gray-500 mt-32">
                                 <i class="fas fa-mouse-pointer text-4xl mb-4"></i>
                                 <p class="text-lg">Drag components here to start building your email template</p>
@@ -760,6 +1030,96 @@
                 </button>
                 <button class="modal-close bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors">
                     Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signature Creator Modal -->
+    <div id="signature-creator-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-screen overflow-y-auto">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold">Create Signature</h3>
+                <button class="modal-close text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="mb-6">
+                <div class="flex space-x-4 mb-4">
+                    <button id="draw-signature-tab" class="tab-button active px-4 py-2 bg-blue-600 text-white rounded-md transition-colors">
+                        <i class="fas fa-pen mr-2"></i>Draw Signature
+                    </button>
+                    <button id="upload-signature-tab" class="tab-button px-4 py-2 bg-gray-200 text-gray-700 rounded-md transition-colors">
+                        <i class="fas fa-upload mr-2"></i>Upload Image
+                    </button>
+                    <button id="type-signature-tab" class="tab-button px-4 py-2 bg-gray-200 text-gray-700 rounded-md transition-colors">
+                        <i class="fas fa-keyboard mr-2"></i>Type Text
+                    </button>
+                </div>
+
+                <!-- Draw Signature Tab -->
+                <div id="draw-signature-content" class="tab-content">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4">
+                        <canvas id="signature-canvas" width="500" height="200" class="border border-gray-300 rounded cursor-crosshair w-full" style="background: white;"></canvas>
+                        <div class="flex justify-between mt-3">
+                            <button id="clear-signature" class="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors">
+                                <i class="fas fa-eraser mr-1"></i>Clear
+                            </button>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-sm text-gray-600">Pen Size:</label>
+                                <input type="range" id="pen-size" min="1" max="5" value="2" class="w-16">
+                                <span id="pen-size-value" class="text-sm text-gray-600">2px</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Signature Tab -->
+                <div id="upload-signature-content" class="tab-content hidden">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <input type="file" id="signature-file-input" accept="image/*" class="hidden">
+                        <button id="upload-signature-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md transition-colors">
+                            <i class="fas fa-cloud-upload-alt mr-2"></i>Choose Signature Image
+                        </button>
+                        <p class="text-sm text-gray-500 mt-2">Supports PNG, JPG, GIF (Max 2MB)</p>
+                        <div id="uploaded-signature-preview" class="mt-4 hidden">
+                            <img id="uploaded-signature-img" class="max-w-full h-auto max-h-40 mx-auto border rounded">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Type Signature Tab -->
+                <div id="type-signature-content" class="tab-content hidden">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+                            <input type="text" id="typed-signature" placeholder="Enter your name" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Font Style</label>
+                            <select id="signature-font" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="cursive" style="font-family: cursive;">Cursive</option>
+                                <option value="'Dancing Script', cursive" style="font-family: 'Dancing Script', cursive;">Dancing Script</option>
+                                <option value="'Great Vibes', cursive" style="font-family: 'Great Vibes', cursive;">Great Vibes</option>
+                                <option value="'Allura', cursive" style="font-family: 'Allura', cursive;">Allura</option>
+                                <option value="'Pacifico', cursive" style="font-family: 'Pacifico', cursive;">Pacifico</option>
+                            </select>
+                        </div>
+                        <div id="typed-signature-preview" class="border border-gray-300 rounded-lg p-4 text-center bg-gray-50 min-h-20 flex items-center justify-center">
+                            <span class="text-gray-400">Preview will appear here</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button class="modal-close px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                    Cancel
+                </button>
+                <button id="save-signature" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition-colors">
+                    <i class="fas fa-check mr-2"></i>Add to Email
                 </button>
             </div>
         </div>

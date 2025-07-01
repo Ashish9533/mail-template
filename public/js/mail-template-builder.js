@@ -138,12 +138,15 @@ class MailTemplateBuilder {
                 droppable: true
             },
             heading: {
-                html: '<h2 class="email-heading" style="color: #1f2937; font-size: 24px; font-weight: bold; margin: 20px 0; text-align: left;">Your Heading Here</h2>',
-                properties: ['text', 'fontSize', 'color', 'fontWeight', 'textAlign', 'margin']
+                html: '<h2 class="email-heading draggable-heading" style="color: #1f2937; font-size: 24px; font-weight: bold; margin: 20px 0; text-align: left; position: relative; cursor: text; display: inline-block; padding: 8px; border: 1px dashed transparent; border-radius: 4px;" contenteditable="true" data-placeholder="Click to edit heading...">Your Heading Here</h2>',
+                properties: ['text', 'headingLevel', 'fontSize', 'fontFamily', 'color', 'fontWeight', 'fontStyle', 'textDecoration', 'textAlign', 'textShadow', 'letterSpacing', 'lineHeight', 'margin', 'padding', 'backgroundColor', 'borderRadius'],
+                draggable: true,
+                editable: true
             },
             text: {
-                html: '<p class="email-text" style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 15px 0;">Write your email content here. You can customize the font, color, and spacing to match your brand.</p>',
-                properties: ['text', 'fontSize', 'color', 'lineHeight', 'textAlign', 'margin']
+                html: '<div class="email-text" contenteditable="true" style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 15px 0; min-height: 20px; padding: 8px; border: 1px dashed transparent; border-radius: 4px;" data-placeholder="Click to edit text...">Write your email content here. You can customize the font, color, and spacing to match your brand.</div>',
+                properties: ['text', 'fontSize', 'color', 'lineHeight', 'textAlign', 'margin', 'padding'],
+                editable: true
             },
             button: {
                 html: '<a href="#" class="email-button" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 15px 0;">Click Here</a>',
@@ -210,6 +213,11 @@ class MailTemplateBuilder {
                 properties: ['src', 'alt', 'width', 'height', 'borderRadius', 'position', 'top', 'left', 'zIndex'],
                 repositionable: true,
                 draggable: true
+            },
+            signature: {
+                html: '<div class="email-signature" style="border-top: 1px solid #e5e7eb; padding: 20px 0; margin: 30px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6; position: relative;"><div class="signature-content" contenteditable="true" data-placeholder="Best regards,<br>Your Name<br>Your Title<br>Company Name<br>Email: your.email@company.com<br>Phone: +1 (555) 123-4567">Best regards,<br><strong>John Doe</strong><br><em>Marketing Manager</em><br>Acme Corporation<br>Email: john.doe@acme.com<br>Phone: +1 (555) 123-4567</div><button class="signature-creator-btn" style="position: absolute; top: 5px; right: 5px; background: #f59e0b; color: white; border: none; border-radius: 4px; padding: 6px 8px; font-size: 10px; cursor: pointer; opacity: 0; transition: opacity 0.2s ease; z-index: 10;" title="Create Digital Signature"><i class="fas fa-signature"></i></button></div>',
+                properties: ['fontSize', 'color', 'lineHeight', 'textAlign', 'borderTop', 'padding', 'margin'],
+                editable: true
             }
         };
     }
@@ -326,6 +334,20 @@ class MailTemplateBuilder {
             // If this is a droppable component, set up its drop functionality
             if (component.droppable) {
                 this.setupComponentDropFunctionality(element);
+                
+                // CRITICAL: Always target the actual droppable elements, not the wrapper
+                const allDroppableElements = element.querySelectorAll('.droppable-container');
+                allDroppableElements.forEach(droppableEl => {
+                    console.log('Setting up droppable element from addComponent:', droppableEl);
+                    this.addContainerClickTooltip(droppableEl);
+                });
+                
+                // Also check if the first child is droppable (most common case)
+                const firstChild = element.firstElementChild;
+                if (firstChild && firstChild.classList.contains('droppable-container')) {
+                    console.log('Setting up first child droppable from addComponent:', firstChild);
+                    this.addContainerClickTooltip(firstChild);
+                }
             }
             
             // If this is a draggable component (sticker or imageUpload), set up free dragging
@@ -338,9 +360,60 @@ class MailTemplateBuilder {
                 this.setupImageUpload(element);
             }
             
+            // If this is a heading component, set up enhanced functionality
+            if (type === 'heading') {
+                this.setupHeadingFunctionality(element);
+            }
+            
+            // If this is a text component, set up text editing functionality
+            if (type === 'text') {
+                this.setupTextFunctionality(element);
+            }
+            
+            // If this is a signature component, set up signature functionality
+            if (type === 'signature') {
+                this.setupSignatureFunctionality(element);
+            }
+            
             this.selectElement(element);
             this.saveState();
-            this.showNotification(`${type} component added successfully!`);
+            
+            // Show specific instructions for containers
+            if (component.droppable) {
+                this.showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} added! Double-click inside to add components, then drag their handles to reposition.`);
+                
+                // Debug: Log that we're setting up a droppable component
+                console.log(`Setting up droppable component: ${type}`, element);
+                
+                // Double-check that all containers have the tooltip functionality
+                setTimeout(() => {
+                    // Find ALL droppable containers in the element
+                    const allContainers = element.querySelectorAll('.droppable-container');
+                    console.log(`Timeout check: Found ${allContainers.length} droppable containers in ${type} component:`, allContainers);
+                    
+                    allContainers.forEach((container, index) => {
+                        if (!container.dataset.tooltipAdded) {
+                            console.log(`Setting up missed container ${index + 1}:`, container);
+                            this.addContainerClickTooltip(container);
+                        } else {
+                            console.log(`Container ${index + 1} already has tooltip`);
+                        }
+                    });
+                    
+                    // Also check the first child again as a safety measure
+                    const firstChild = element.firstElementChild;
+                    if (firstChild && firstChild.classList.contains('droppable-container') && !firstChild.dataset.tooltipAdded) {
+                        console.log('Setting up missed first child container:', firstChild);
+                        this.addContainerClickTooltip(firstChild);
+                    }
+                    
+                    // Final verification log
+                    const finalCheck = element.querySelectorAll('.droppable-container[data-tooltip-added="true"]');
+                    console.log(`Final verification: ${finalCheck.length} containers properly set up with tooltips`);
+                }, 200);
+            } else {
+                this.showNotification(`${type} component added successfully!`);
+            }
             
             console.log(`Successfully added ${type} component with ID: ${element.id}`);
             
@@ -436,6 +509,107 @@ class MailTemplateBuilder {
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Text</label>
                         <textarea data-property="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3">${currentValue}</textarea>
+                    </div>
+                `;
+            case 'headingLevel':
+                const currentLevel = currentValue || 'h2';
+                return `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Heading Level</label>
+                        <select data-property="headingLevel" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="h1" ${currentLevel === 'h1' ? 'selected' : ''}>H1 - Main Title</option>
+                            <option value="h2" ${currentLevel === 'h2' ? 'selected' : ''}>H2 - Section Title</option>
+                            <option value="h3" ${currentLevel === 'h3' ? 'selected' : ''}>H3 - Subsection</option>
+                            <option value="h4" ${currentLevel === 'h4' ? 'selected' : ''}>H4 - Minor Heading</option>
+                            <option value="h5" ${currentLevel === 'h5' ? 'selected' : ''}>H5 - Small Heading</option>
+                            <option value="h6" ${currentLevel === 'h6' ? 'selected' : ''}>H6 - Tiny Heading</option>
+                        </select>
+                    </div>
+                `;
+            case 'fontFamily':
+                return `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Font Family</label>
+                        <select data-property="fontFamily" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="Arial, sans-serif">Arial</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                            <option value="'Courier New', monospace">Courier New</option>
+                            <option value="Georgia, serif">Georgia</option>
+                            <option value="Verdana, sans-serif">Verdana</option>
+                            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                            <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+                            <option value="Impact, sans-serif">Impact</option>
+                            <option value="'Lucida Sans', sans-serif">Lucida Sans</option>
+                            <option value="Tahoma, sans-serif">Tahoma</option>
+                        </select>
+                    </div>
+                `;
+            case 'fontStyle':
+                return `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Font Style</label>
+                        <select data-property="fontStyle" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="normal">Normal</option>
+                            <option value="italic">Italic</option>
+                            <option value="oblique">Oblique</option>
+                        </select>
+                    </div>
+                `;
+            case 'textDecoration':
+                return `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Text Decoration</label>
+                        <select data-property="textDecoration" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="none">None</option>
+                            <option value="underline">Underline</option>
+                            <option value="overline">Overline</option>
+                            <option value="line-through">Strike Through</option>
+                            <option value="underline overline">Underline + Overline</option>
+                        </select>
+                    </div>
+                `;
+            case 'textShadow':
+                return `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Text Shadow</label>
+                        <select data-property="textShadow" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="none">None</option>
+                            <option value="2px 2px 4px rgba(0,0,0,0.3)">Light Shadow</option>
+                            <option value="3px 3px 6px rgba(0,0,0,0.5)">Medium Shadow</option>
+                            <option value="4px 4px 8px rgba(0,0,0,0.7)">Heavy Shadow</option>
+                            <option value="1px 1px 2px rgba(255,255,255,0.8)">White Glow</option>
+                            <option value="0 0 10px rgba(59,130,246,0.8)">Blue Glow</option>
+                            <option value="0 0 10px rgba(239,68,68,0.8)">Red Glow</option>
+                        </select>
+                    </div>
+                `;
+            case 'letterSpacing':
+                return `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Letter Spacing</label>
+                        <select data-property="letterSpacing" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="normal">Normal</option>
+                            <option value="1px">1px</option>
+                            <option value="2px">2px</option>
+                            <option value="3px">3px</option>
+                            <option value="4px">4px</option>
+                            <option value="5px">5px</option>
+                            <option value="-1px">-1px (Tighter)</option>
+                        </select>
+                    </div>
+                `;
+            case 'lineHeight':
+                return `
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Line Height</label>
+                        <select data-property="lineHeight" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="1">1.0</option>
+                            <option value="1.2">1.2</option>
+                            <option value="1.4">1.4</option>
+                            <option value="1.6">1.6 (Default)</option>
+                            <option value="1.8">1.8</option>
+                            <option value="2.0">2.0</option>
+                        </select>
                     </div>
                 `;
             case 'fontSize':
@@ -605,13 +779,31 @@ class MailTemplateBuilder {
 
         switch (property) {
             case 'text':
+                // Handle different text elements
+                if (firstChild.classList.contains('email-text') || firstChild.classList.contains('signature-content')) {
+                    return firstChild.innerHTML || firstChild.textContent || '';
+                }
                 return firstChild.textContent || firstChild.innerText || '';
+            case 'headingLevel':
+                return firstChild.tagName.toLowerCase();
             case 'url':
                 return firstChild.href || '';
             case 'src':
                 return firstChild.src || '';
             case 'alt':
                 return firstChild.alt || '';
+            case 'fontFamily':
+                return firstChild.style.fontFamily || 'Arial, sans-serif';
+            case 'fontStyle':
+                return firstChild.style.fontStyle || 'normal';
+            case 'textDecoration':
+                return firstChild.style.textDecoration || 'none';
+            case 'textShadow':
+                return firstChild.style.textShadow || 'none';
+            case 'letterSpacing':
+                return firstChild.style.letterSpacing || 'normal';
+            case 'lineHeight':
+                return firstChild.style.lineHeight || '1.6';
             default:
                 return firstChild.style[property] || '';
         }
@@ -626,7 +818,41 @@ class MailTemplateBuilder {
 
         switch (property) {
             case 'text':
-                firstChild.textContent = value;
+                // Handle different text elements
+                if (firstChild.classList.contains('email-text') || firstChild.classList.contains('signature-content')) {
+                    firstChild.innerHTML = value;
+                } else {
+                    firstChild.textContent = value;
+                }
+                break;
+            case 'headingLevel':
+                // Change the heading tag level
+                const newHeading = document.createElement(value);
+                newHeading.className = firstChild.className;
+                newHeading.style.cssText = firstChild.style.cssText;
+                newHeading.textContent = firstChild.textContent;
+                newHeading.contentEditable = firstChild.contentEditable;
+                newHeading.dataset.placeholder = firstChild.dataset.placeholder;
+                
+                // Preserve current transform if any
+                const currentTransform = firstChild.style.transform;
+                if (currentTransform) {
+                    newHeading.style.transform = currentTransform;
+                }
+                
+                // Remove old drag handle if exists
+                const oldDragHandle = element.querySelector('.heading-drag-handle');
+                if (oldDragHandle) {
+                    oldDragHandle.remove();
+                }
+                
+                // Replace the element
+                element.replaceChild(newHeading, firstChild);
+                
+                // Re-setup the heading functionality with new element
+                this.setupHeadingFunctionality(element);
+                
+                this.showNotification(`Heading changed to ${value.toUpperCase()}`);
                 break;
             case 'url':
                 firstChild.href = value;
@@ -648,6 +874,24 @@ class MailTemplateBuilder {
                 break;
             case 'left':
                 firstChild.style.left = value + 'px';
+                break;
+            case 'fontFamily':
+                firstChild.style.fontFamily = value;
+                break;
+            case 'fontStyle':
+                firstChild.style.fontStyle = value;
+                break;
+            case 'textDecoration':
+                firstChild.style.textDecoration = value;
+                break;
+            case 'textShadow':
+                firstChild.style.textShadow = value;
+                break;
+            case 'letterSpacing':
+                firstChild.style.letterSpacing = value;
+                break;
+            case 'lineHeight':
+                firstChild.style.lineHeight = value;
                 break;
             default:
                 firstChild.style[property] = value;
@@ -722,7 +966,7 @@ class MailTemplateBuilder {
             placeholder.style.display = 'none';
         }
         
-        // Make all components selectable
+        // Make all components selectable and set up functionality
         this.canvas.querySelectorAll('[class*="email-"]').forEach((element, index) => {
             const wrapper = document.createElement('div');
             wrapper.className = 'email-component';
@@ -737,6 +981,23 @@ class MailTemplateBuilder {
             
             // Make loaded components draggable too
             this.makeComponentDraggable(wrapper);
+            
+            // If this is a droppable component, set up its functionality
+            if (element.classList.contains('droppable-container') || 
+                element.querySelector('.droppable-container')) {
+                this.setupComponentDropFunctionality(wrapper);
+                
+                // Ensure all droppable containers get tooltip functionality
+                const containers = wrapper.querySelectorAll('.droppable-container');
+                containers.forEach(container => {
+                    this.addContainerClickTooltip(container);
+                });
+                
+                // Also check the element itself
+                if (element.classList.contains('droppable-container')) {
+                    this.addContainerClickTooltip(element);
+                }
+            }
         });
         
         this.saveState();
@@ -1451,7 +1712,8 @@ class MailTemplateBuilder {
             card: 'fas fa-id-card',
             banner: 'fas fa-flag',
             sticker: 'fas fa-star',
-            imageUpload: 'fas fa-upload'
+            imageUpload: 'fas fa-upload',
+            signature: 'fas fa-signature'
         };
         return icons[componentType] || 'fas fa-cube';
     }
@@ -1883,6 +2145,62 @@ class MailTemplateBuilder {
             // If this is a new droppable component, set up its drop functionality
             if (component.droppable) {
                 this.setupComponentDropFunctionality(element);
+                // Also ensure all droppable containers inside get the tooltip functionality
+                const droppableContainers = element.querySelectorAll('.droppable-container');
+                droppableContainers.forEach(container => {
+                    this.addContainerClickTooltip(container);
+                });
+            }
+            
+            // If this is a heading component, set up enhanced functionality
+            if (componentType === 'heading') {
+                this.setupHeadingFunctionality(element);
+                console.log('Heading functionality set up for container heading:', element.id);
+                this.showNotification('Heading added! Hover to see drag handle for repositioning within container.', 'success');
+            }
+            
+            // If this is a text component, set up text editing functionality
+            if (componentType === 'text') {
+                this.setupTextFunctionality(element);
+                this.showNotification('Text added! Click to edit, press Enter for new lines.', 'success');
+            }
+            
+            // If this is a signature component, set up signature functionality
+            if (componentType === 'signature') {
+                this.setupSignatureFunctionality(element);
+                this.showNotification('Signature added! Click to edit your contact information.', 'success');
+            }
+            
+            // If this is a container component, make sure it gets proper setup
+            if (componentType === 'container' || componentType === 'row' || componentType === 'grid' || componentType === 'section') {
+                // Find all droppable containers in this new element and set them up
+                const containers = element.querySelectorAll('.droppable-container');
+                containers.forEach(container => {
+                    this.addContainerClickTooltip(container);
+                });
+                
+                // Also check if the element itself is a droppable container
+                if (element.classList.contains('droppable-container')) {
+                    this.addContainerClickTooltip(element);
+                }
+                
+                // And check the first child
+                const firstChild = element.firstElementChild;
+                if (firstChild && firstChild.classList.contains('droppable-container')) {
+                    this.addContainerClickTooltip(firstChild);
+                }
+                
+                this.showNotification(`${componentType.charAt(0).toUpperCase() + componentType.slice(1)} added to container! Double-click to add components inside.`, 'success');
+            }
+            
+            // If this is a draggable component (sticker or imageUpload), set up free dragging
+            if (component.draggable && (componentType === 'sticker' || componentType === 'imageUpload')) {
+                this.setupFreeDragging(element);
+            }
+            
+            // If this is an image upload component, set up file upload
+            if (componentType === 'imageUpload') {
+                this.setupImageUpload(element);
             }
             
             this.selectElement(element);
@@ -1903,10 +2221,15 @@ class MailTemplateBuilder {
     }
 
     setupComponentDropFunctionality(element) {
+        console.log('setupComponentDropFunctionality called for element:', element);
+        
         // Set up drop functionality for newly added droppable components
         const droppableContainers = element.querySelectorAll('.droppable-container');
+        console.log(`Found ${droppableContainers.length} droppable containers to set up:`, droppableContainers);
         
-        droppableContainers.forEach(container => {
+        droppableContainers.forEach((container, index) => {
+            console.log(`Setting up container ${index + 1} with classes:`, container.className);
+            
             // Add tooltip and double-click functionality
             this.addContainerClickTooltip(container);
             
@@ -1942,8 +2265,56 @@ class MailTemplateBuilder {
         
         // Also set up functionality for the main element if it's droppable
         if (element.classList.contains('droppable-container')) {
+            console.log('Main element is droppable, setting up:', element);
             this.addContainerClickTooltip(element);
         }
+        
+        // CRITICAL: Always check the first child for droppable containers
+        const firstChild = element.firstElementChild;
+        if (firstChild && firstChild.classList.contains('droppable-container')) {
+            console.log('First child is droppable, setting up:', firstChild);
+            
+            // Only add if not already processed by querySelectorAll above
+            if (!firstChild.dataset.tooltipAdded) {
+                this.addContainerClickTooltip(firstChild);
+                
+                // Set up the same event listeners for the first child
+                firstChild.addEventListener('dragover', (e) => {
+                    if (!this.isDraggingFromCanvas) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.highlightDropContainer(firstChild);
+                    }
+                });
+
+                firstChild.addEventListener('dragleave', (e) => {
+                    if (!firstChild.contains(e.relatedTarget)) {
+                        this.removeDropContainerHighlight(firstChild);
+                    }
+                });
+
+                firstChild.addEventListener('drop', (e) => {
+                    if (!this.isDraggingFromCanvas) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const componentType = e.dataTransfer.getData('text/plain');
+                        const source = e.dataTransfer.getData('source');
+                        
+                        if (source === 'sidebar' && componentType) {
+                            this.addComponentToContainer(componentType, firstChild);
+                            this.removeDropContainerHighlight(firstChild);
+                        }
+                    }
+                });
+            } else {
+                console.log('First child already has tooltip setup');
+            }
+        }
+        
+        // Final log for verification
+        const setupContainers = element.querySelectorAll('.droppable-container[data-tooltip-added="true"]');
+        console.log(`setupComponentDropFunctionality completed: ${setupContainers.length} containers now have functionality`);
     }
 
     resetDragState() {
@@ -2691,16 +3062,56 @@ class MailTemplateBuilder {
 
     // Enhanced method to add placeholder context
     addContainerClickTooltip(container) {
-        if (!container.dataset.tooltipAdded) {
-            container.title = 'Drop components here or double-click to add content';
-            container.dataset.tooltipAdded = 'true';
-            
-            // Add double-click functionality for quick component addition
-            container.addEventListener('dblclick', (e) => {
-                e.stopPropagation();
-                this.showQuickAddMenu(container, e);
-            });
+        // Check if this container already has the functionality
+        if (container.dataset.tooltipAdded === 'true') {
+            console.log('Container already has tooltip functionality, skipping:', container);
+            return;
         }
+        
+        console.log('Adding tooltip functionality to container:', container, 'Classes:', container.className);
+        
+        container.title = 'Drop components here or double-click to add content';
+        container.dataset.tooltipAdded = 'true';
+        
+        // Add double-click functionality for quick component addition
+        container.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            console.log('Double-click detected on container:', container);
+            this.showQuickAddMenu(container, e);
+        });
+        
+        // Also add a visual indicator that this container is interactive
+        container.style.cursor = 'pointer';
+        
+        // Add hover effect to show it's interactive
+        const originalBorder = container.style.border;
+        const originalBackground = container.style.backgroundColor;
+        
+        container.addEventListener('mouseenter', () => {
+            if (!container.classList.contains('drop-highlight')) {
+                container.style.border = '2px dashed #3b82f6';
+                container.style.backgroundColor = 'rgba(59, 130, 246, 0.02)';
+            }
+        });
+        
+        container.addEventListener('mouseleave', () => {
+            if (!container.classList.contains('drop-highlight')) {
+                container.style.border = originalBorder;
+                container.style.backgroundColor = originalBackground;
+            }
+        });
+        
+        console.log('✅ Container tooltip and functionality successfully added to:', container.className);
+        
+        // Verify the setup immediately
+        setTimeout(() => {
+            if (container.dataset.tooltipAdded === 'true') {
+                console.log('✅ Verification passed: Container tooltip setup confirmed');
+            } else {
+                console.error('❌ Verification failed: Container tooltip setup not confirmed');
+            }
+        }, 50);
     }
 
     showQuickAddMenu(container, event) {
@@ -2712,32 +3123,48 @@ class MailTemplateBuilder {
             background: white;
             border: 1px solid #d1d5db;
             border-radius: 8px;
-            padding: 8px;
+            padding: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             z-index: 1000;
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 4px;
-            min-width: 200px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            min-width: 280px;
+            max-height: 350px;
+            overflow-y: auto;
         `;
         
-        const commonComponents = ['heading', 'text', 'button', 'image', 'divider', 'spacer'];
+        const commonComponents = ['heading', 'text', 'button', 'image', 'signature', 'divider', 'spacer', 'list', 'social', 'card', 'table', 'container'];
+        
+        // Safe menu removal function
+        const safeRemoveMenu = () => {
+            if (quickMenu && quickMenu.parentNode === document.body) {
+                try {
+                    document.body.removeChild(quickMenu);
+                    document.removeEventListener('click', removeMenu);
+                } catch (error) {
+                    console.warn('Menu already removed:', error);
+                }
+            }
+        };
         
         commonComponents.forEach(componentType => {
             const button = document.createElement('button');
             button.className = 'quick-add-btn';
             button.style.cssText = `
-                padding: 8px 12px;
+                padding: 8px 6px;
                 border: 1px solid #e5e7eb;
                 background: #f9fafb;
-                border-radius: 4px;
+                border-radius: 6px;
                 cursor: pointer;
-                font-size: 12px;
+                font-size: 10px;
                 transition: all 0.2s;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                gap: 4px;
+                gap: 3px;
+                min-height: 50px;
+                text-align: center;
             `;
             
             button.innerHTML = `
@@ -2746,8 +3173,26 @@ class MailTemplateBuilder {
             `;
             
             button.addEventListener('click', () => {
+                console.log(`Adding ${componentType} to container via quick-add menu`);
                 this.addComponentToContainer(componentType, container);
-                document.body.removeChild(quickMenu);
+                safeRemoveMenu();
+                
+                // If we just added a container type, ensure it gets proper setup
+                if (['container', 'row', 'grid', 'section'].includes(componentType)) {
+                    setTimeout(() => {
+                        // Find the newly added container and ensure it has functionality
+                        const newlyAdded = container.lastElementChild;
+                        if (newlyAdded && newlyAdded.classList.contains('email-component')) {
+                            const droppableElements = newlyAdded.querySelectorAll('.droppable-container');
+                            droppableElements.forEach(elem => {
+                                if (!elem.dataset.tooltipAdded) {
+                                    console.log('Setting up newly added container from quick-add:', elem);
+                                    this.addContainerClickTooltip(elem);
+                                }
+                            });
+                        }
+                    }, 200);
+                }
             });
             
             button.addEventListener('mouseenter', () => {
@@ -2777,8 +3222,7 @@ class MailTemplateBuilder {
         // Remove menu when clicking outside
         const removeMenu = (e) => {
             if (!quickMenu.contains(e.target)) {
-                document.body.removeChild(quickMenu);
-                document.removeEventListener('click', removeMenu);
+                safeRemoveMenu();
             }
         };
         
@@ -2941,6 +3385,611 @@ class MailTemplateBuilder {
         firstChild.addEventListener('mousedown', handleMouseDown);
     }
 
+    setupHeadingFunctionality(element) {
+        // Set up enhanced heading functionality
+        const headingElement = element.querySelector('.email-heading, .draggable-heading');
+        if (!headingElement) return;
+
+        // Set up dragging within container
+        this.setupHeadingDragging(element, headingElement);
+        
+        // Set up inline editing
+        this.setupHeadingInlineEditing(headingElement);
+        
+        // Set up hover effects
+        this.setupHeadingHoverEffects(headingElement);
+    }
+
+    setupHeadingDragging(wrapperElement, headingElement) {
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let initialTransform = { x: 0, y: 0 };
+        let dragStarted = false;
+
+        // Add special drag handle indicator
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'heading-drag-handle';
+        dragHandle.style.cssText = `
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: grab;
+            opacity: 0;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            z-index: 10;
+            font-family: monospace;
+            font-weight: bold;
+        `;
+        dragHandle.innerHTML = '⋮⋮';
+        dragHandle.title = 'Drag to reposition heading';
+        
+        // Position the wrapper element relatively so drag handle can be positioned
+        wrapperElement.style.position = 'relative';
+        wrapperElement.appendChild(dragHandle);
+
+        const handleDragStart = (e) => {
+            // Prevent text editing during drag
+            headingElement.contentEditable = 'false';
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            isDragging = true;
+            dragStarted = false;
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            // Get current transform values
+            const computedStyle = window.getComputedStyle(headingElement);
+            const transform = computedStyle.transform;
+            
+            if (transform && transform !== 'none') {
+                const matrix = new DOMMatrix(transform);
+                initialTransform = { x: matrix.m41, y: matrix.m42 };
+            } else {
+                initialTransform = { x: 0, y: 0 };
+            }
+            
+            // Visual feedback for drag handle
+            dragHandle.style.cursor = 'grabbing';
+            dragHandle.style.background = '#2563eb';
+            dragHandle.style.transform = 'scale(1.1)';
+            
+            // Add global event listeners
+            document.addEventListener('mousemove', handleDragMove);
+            document.addEventListener('mouseup', handleDragEnd);
+            
+            // Disable text selection during drag
+            document.body.style.userSelect = 'none';
+            
+            this.showNotification('Dragging heading - move mouse to reposition', 'info');
+        };
+
+        const handleDragMove = (e) => {
+            if (!isDragging) return;
+            
+            e.preventDefault();
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            // Only start visual dragging after minimum movement threshold
+            if (!dragStarted && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+                dragStarted = true;
+                
+                // Add visual feedback to heading
+                headingElement.style.zIndex = '1000';
+                headingElement.style.opacity = '0.8';
+                headingElement.style.border = '2px dashed #3b82f6';
+                headingElement.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.3)';
+                
+                // Highlight the parent container to show positioning area
+                let parentContainer = wrapperElement.parentElement;
+                while (parentContainer && !parentContainer.classList.contains('droppable-container') && !parentContainer.classList.contains('email-canvas')) {
+                    parentContainer = parentContainer.parentElement;
+                }
+                
+                if (parentContainer && parentContainer.classList.contains('droppable-container')) {
+                    parentContainer.classList.add('heading-drag-active');
+                }
+            }
+            
+            if (dragStarted) {
+                let newX = initialTransform.x + deltaX;
+                let newY = initialTransform.y + deltaY;
+                
+                // Apply snap to grid if enabled
+                if (this.snapEnabled) {
+                    const gridSize = 20;
+                    newX = Math.round(newX / gridSize) * gridSize;
+                    newY = Math.round(newY / gridSize) * gridSize;
+                }
+                
+                // Find the correct parent droppable container
+                let parentContainer = wrapperElement.parentElement;
+                while (parentContainer && !parentContainer.classList.contains('droppable-container') && !parentContainer.classList.contains('email-canvas')) {
+                    parentContainer = parentContainer.parentElement;
+                }
+                
+                if (parentContainer) {
+                    const containerRect = parentContainer.getBoundingClientRect();
+                    const headingRect = headingElement.getBoundingClientRect();
+                    
+                    // Calculate container's inner dimensions (excluding padding/borders)
+                    const containerStyle = window.getComputedStyle(parentContainer);
+                    const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+                    const paddingRight = parseFloat(containerStyle.paddingRight) || 0;
+                    const paddingTop = parseFloat(containerStyle.paddingTop) || 0;
+                    const paddingBottom = parseFloat(containerStyle.paddingBottom) || 0;
+                    
+                    const availableWidth = containerRect.width - paddingLeft - paddingRight;
+                    const availableHeight = containerRect.height - paddingTop - paddingBottom;
+                    
+                    // Calculate max bounds (keep heading within container)
+                    const maxX = availableWidth - headingRect.width - 10;
+                    const maxY = availableHeight - headingRect.height - 10;
+                    
+                    // Apply boundary constraints
+                    newX = Math.max(paddingLeft - 5, Math.min(newX, maxX));
+                    newY = Math.max(paddingTop - 5, Math.min(newY, maxY));
+                } else {
+                    // Fallback to basic constraints if no container found
+                    newX = Math.max(-10, Math.min(newX, 400));
+                    newY = Math.max(-10, Math.min(newY, 300));
+                }
+                
+                // Apply transform for smooth positioning
+                headingElement.style.transform = `translate(${newX}px, ${newY}px)`;
+            }
+        };
+
+        const handleDragEnd = (e) => {
+            if (!isDragging) return;
+            
+            isDragging = false;
+            
+            // Re-enable text editing
+            headingElement.contentEditable = 'true';
+            
+            // Reset visual feedback
+            headingElement.style.zIndex = '';
+            headingElement.style.opacity = '';
+            headingElement.style.border = '1px dashed transparent';
+            headingElement.style.boxShadow = '';
+            
+            // Remove container highlight
+            let parentContainer = wrapperElement.parentElement;
+            while (parentContainer && !parentContainer.classList.contains('droppable-container') && !parentContainer.classList.contains('email-canvas')) {
+                parentContainer = parentContainer.parentElement;
+            }
+            
+            if (parentContainer && parentContainer.classList.contains('droppable-container')) {
+                parentContainer.classList.remove('heading-drag-active');
+            }
+            
+            // Reset drag handle
+            dragHandle.style.cursor = 'grab';
+            dragHandle.style.background = '#3b82f6';
+            dragHandle.style.transform = 'scale(1)';
+            
+            // Re-enable text selection
+            document.body.style.userSelect = '';
+            
+            // Remove global event listeners
+            document.removeEventListener('mousemove', handleDragMove);
+            document.removeEventListener('mouseup', handleDragEnd);
+            
+            if (dragStarted) {
+                this.saveState();
+                this.showNotification('Heading repositioned successfully!');
+            }
+            
+            dragStarted = false;
+        };
+
+        // Attach drag events to the drag handle only
+        dragHandle.addEventListener('mousedown', handleDragStart);
+        
+        // Show/hide drag handle on hover
+        wrapperElement.addEventListener('mouseenter', () => {
+            dragHandle.style.opacity = '1';
+        });
+        
+        wrapperElement.addEventListener('mouseleave', () => {
+            if (!isDragging) {
+                dragHandle.style.opacity = '0';
+            }
+        });
+
+        // Prevent drag handle from interfering with text editing
+        dragHandle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        // Add keyboard shortcut for drag mode
+        headingElement.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                e.preventDefault();
+                dragHandle.style.opacity = '1';
+                setTimeout(() => {
+                    if (!isDragging) {
+                        dragHandle.style.opacity = '0';
+                    }
+                }, 2000);
+                this.showNotification('Drag handle highlighted! Use the blue circle to drag.', 'info');
+            }
+        });
+    }
+
+    setupHeadingInlineEditing(headingElement) {
+        // Enhanced inline editing functionality
+        headingElement.addEventListener('focus', () => {
+            headingElement.style.outline = '2px solid #3b82f6';
+            headingElement.style.outlineOffset = '2px';
+            headingElement.style.cursor = 'text';
+            
+            // Clear placeholder text if it matches the placeholder
+            const placeholder = headingElement.dataset.placeholder || 'Click to edit heading...';
+            if (headingElement.textContent === placeholder) {
+                headingElement.textContent = '';
+            }
+        });
+        
+        headingElement.addEventListener('blur', () => {
+            headingElement.style.outline = '';
+            headingElement.style.outlineOffset = '';
+            headingElement.style.cursor = 'text';
+            
+            // Restore placeholder if empty
+            const placeholder = headingElement.dataset.placeholder || 'Your Heading Here';
+            if (headingElement.textContent.trim() === '') {
+                headingElement.textContent = placeholder;
+            }
+            
+            this.saveState();
+        });
+        
+        // Handle click to focus (separate from drag)
+        headingElement.addEventListener('click', (e) => {
+            // Only focus if not dragging and not clicking drag handle
+            if (!e.target.closest('.heading-drag-handle')) {
+                headingElement.focus();
+                
+                // Select all text on click for easy editing
+                const range = document.createRange();
+                range.selectNodeContents(headingElement);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+        });
+        
+        // Prevent line breaks in headings
+        headingElement.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                headingElement.blur(); // Exit editing mode
+            }
+            
+            // Save on Ctrl+S
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                headingElement.blur();
+                this.saveTemplate();
+            }
+        });
+        
+        // Update properties panel on text change
+        headingElement.addEventListener('input', () => {
+            // Update properties panel if this heading is selected
+            if (headingElement.closest('.email-component.selected')) {
+                setTimeout(() => this.showPropertiesPanel(headingElement.closest('.email-component')), 100);
+            }
+        });
+        
+        // Improve paste handling
+        headingElement.addEventListener('paste', (e) => {
+            e.preventDefault();
+            
+            // Get plain text from clipboard
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            
+            // Insert text without formatting and remove line breaks
+            const cleanText = text.replace(/\r?\n|\r/g, ' ').trim();
+            document.execCommand('insertText', false, cleanText);
+        });
+    }
+
+    setupHeadingHoverEffects(headingElement) {
+        // Enhanced hover effects
+        headingElement.addEventListener('mouseenter', () => {
+            if (!headingElement.style.position || headingElement.style.position === 'static') {
+                headingElement.style.transform = 'translateY(-1px)';
+                headingElement.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+            }
+            headingElement.style.borderColor = '#93c5fd';
+        });
+        
+        headingElement.addEventListener('mouseleave', () => {
+            if (!headingElement.style.position || headingElement.style.position === 'static') {
+                headingElement.style.transform = '';
+                headingElement.style.boxShadow = '';
+            }
+            headingElement.style.borderColor = 'transparent';
+        });
+    }
+
+    setupTextFunctionality(element) {
+        // Set up enhanced text editing functionality
+        const textElement = element.querySelector('.email-text');
+        if (!textElement) return;
+
+        // Set up inline editing with line break support
+        this.setupTextInlineEditing(textElement);
+        
+        // Set up hover effects
+        this.setupTextHoverEffects(textElement);
+    }
+
+    setupTextInlineEditing(textElement) {
+        // Enhanced text editing functionality with Enter key support
+        textElement.addEventListener('focus', () => {
+            textElement.style.outline = '2px solid #10b981';
+            textElement.style.outlineOffset = '2px';
+            textElement.style.borderColor = '#10b981';
+            textElement.style.cursor = 'text';
+            
+            // Clear placeholder text if it matches the placeholder
+            const placeholder = textElement.dataset.placeholder || 'Click to edit text...';
+            if (textElement.textContent.trim() === placeholder) {
+                textElement.innerHTML = '';
+            }
+        });
+        
+        textElement.addEventListener('blur', () => {
+            textElement.style.outline = '';
+            textElement.style.outlineOffset = '';
+            textElement.style.borderColor = 'transparent';
+            textElement.style.cursor = 'text';
+            
+            // Restore placeholder if empty
+            const placeholder = textElement.dataset.placeholder || 'Write your text here...';
+            if (textElement.textContent.trim() === '') {
+                textElement.innerHTML = placeholder;
+                textElement.style.color = '#9ca3af';
+                textElement.style.fontStyle = 'italic';
+            } else {
+                textElement.style.color = '';
+                textElement.style.fontStyle = '';
+            }
+            
+            this.saveState();
+        });
+        
+        // Handle click to focus
+        textElement.addEventListener('click', (e) => {
+            textElement.focus();
+            
+            // If clicking on placeholder text, select all
+            const placeholder = textElement.dataset.placeholder || 'Click to edit text...';
+            if (textElement.textContent.trim() === placeholder) {
+                const range = document.createRange();
+                range.selectNodeContents(textElement);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+        });
+        
+        // Handle keyboard events - ALLOW Enter for line breaks
+        textElement.addEventListener('keydown', (e) => {
+            // Allow Enter key for line breaks (unlike headings)
+            if (e.key === 'Enter') {
+                // Let the default behavior happen (create line breaks)
+                // We can optionally add some custom behavior here
+            }
+            
+            // Save on Ctrl+S
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                textElement.blur();
+                this.saveTemplate();
+            }
+        });
+        
+        // Update properties panel on text change
+        textElement.addEventListener('input', () => {
+            // Update properties panel if this text is selected
+            if (textElement.closest('.email-component.selected')) {
+                setTimeout(() => this.showPropertiesPanel(textElement.closest('.email-component')), 100);
+            }
+        });
+        
+        // Improve paste handling - preserve line breaks
+        textElement.addEventListener('paste', (e) => {
+            e.preventDefault();
+            
+            // Get text from clipboard (preserving line breaks)
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            
+            // Convert line breaks to HTML line breaks
+            const htmlText = text.replace(/\r?\n/g, '<br>');
+            
+            // Insert HTML with line breaks
+            document.execCommand('insertHTML', false, htmlText);
+        });
+    }
+
+    setupTextHoverEffects(textElement) {
+        // Enhanced hover effects for text
+        textElement.addEventListener('mouseenter', () => {
+            textElement.style.backgroundColor = 'rgba(16, 185, 129, 0.05)';
+            textElement.style.borderColor = '#93f3e3';
+        });
+        
+        textElement.addEventListener('mouseleave', () => {
+            if (!textElement.matches(':focus')) {
+                textElement.style.backgroundColor = '';
+                textElement.style.borderColor = 'transparent';
+            }
+        });
+    }
+
+    setupSignatureFunctionality(element) {
+        // Set up enhanced signature editing functionality
+        const signatureElement = element.querySelector('.signature-content');
+        if (!signatureElement) return;
+
+        // Set up inline editing with line break support (like text)
+        this.setupSignatureInlineEditing(signatureElement);
+        
+        // Set up hover effects
+        this.setupSignatureHoverEffects(element, signatureElement);
+    }
+
+    setupSignatureInlineEditing(signatureElement) {
+        // Enhanced signature editing functionality
+        signatureElement.addEventListener('focus', () => {
+            signatureElement.style.outline = '2px solid #f59e0b';
+            signatureElement.style.outlineOffset = '2px';
+            signatureElement.style.backgroundColor = 'rgba(245, 158, 11, 0.05)';
+            signatureElement.style.cursor = 'text';
+            signatureElement.style.borderRadius = '4px';
+            signatureElement.style.padding = '8px';
+            
+            // Clear placeholder if it matches
+            const placeholder = signatureElement.dataset.placeholder || '';
+            if (signatureElement.innerHTML === placeholder) {
+                signatureElement.innerHTML = '';
+            }
+        });
+        
+        signatureElement.addEventListener('blur', () => {
+            signatureElement.style.outline = '';
+            signatureElement.style.outlineOffset = '';
+            signatureElement.style.backgroundColor = '';
+            signatureElement.style.padding = '';
+            signatureElement.style.borderRadius = '';
+            
+            // Restore placeholder if empty
+            const placeholder = signatureElement.dataset.placeholder || 'Best regards,<br>Your Name<br>Your Title<br>Company Name<br>Email: your.email@company.com<br>Phone: +1 (555) 123-4567';
+            if (signatureElement.textContent.trim() === '') {
+                signatureElement.innerHTML = placeholder;
+                signatureElement.style.color = '#9ca3af';
+                signatureElement.style.fontStyle = 'italic';
+            } else {
+                signatureElement.style.color = '';
+                signatureElement.style.fontStyle = '';
+            }
+            
+            this.saveState();
+        });
+        
+        // Handle click to focus
+        signatureElement.addEventListener('click', (e) => {
+            signatureElement.focus();
+            
+            // If clicking on placeholder, select all
+            const placeholder = signatureElement.dataset.placeholder || '';
+            if (signatureElement.innerHTML === placeholder) {
+                const range = document.createRange();
+                range.selectNodeContents(signatureElement);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+        });
+        
+        // Handle keyboard events - ALLOW Enter for line breaks
+        signatureElement.addEventListener('keydown', (e) => {
+            // Allow Enter key for line breaks
+            if (e.key === 'Enter') {
+                // Let the default behavior happen (create line breaks)
+            }
+            
+            // Save on Ctrl+S
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                signatureElement.blur();
+                this.saveTemplate();
+            }
+        });
+        
+        // Update properties panel on text change
+        signatureElement.addEventListener('input', () => {
+            if (signatureElement.closest('.email-component.selected')) {
+                setTimeout(() => this.showPropertiesPanel(signatureElement.closest('.email-component')), 100);
+            }
+        });
+        
+        // Improve paste handling - preserve line breaks
+        signatureElement.addEventListener('paste', (e) => {
+            e.preventDefault();
+            
+            // Get text from clipboard (preserving line breaks)
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            
+            // Convert line breaks to HTML line breaks
+            const htmlText = text.replace(/\r?\n/g, '<br>');
+            
+            // Insert HTML with line breaks
+            document.execCommand('insertHTML', false, htmlText);
+        });
+    }
+
+    setupSignatureHoverEffects(wrapperElement, signatureElement) {
+        // Enhanced hover effects for signature
+        const signatureCreatorBtn = wrapperElement.querySelector('.signature-creator-btn');
+        
+        wrapperElement.addEventListener('mouseenter', () => {
+            wrapperElement.style.backgroundColor = 'rgba(245, 158, 11, 0.02)';
+            wrapperElement.style.borderColor = '#fed7aa';
+            wrapperElement.style.borderRadius = '4px';
+            wrapperElement.style.border = '1px dashed #fed7aa';
+            
+            // Show signature creator button
+            if (signatureCreatorBtn) {
+                signatureCreatorBtn.style.opacity = '1';
+            }
+        });
+        
+        wrapperElement.addEventListener('mouseleave', () => {
+            if (!signatureElement.matches(':focus')) {
+                wrapperElement.style.backgroundColor = '';
+                wrapperElement.style.borderColor = '';
+                wrapperElement.style.border = '';
+                wrapperElement.style.borderRadius = '';
+                
+                // Hide signature creator button
+                if (signatureCreatorBtn) {
+                    signatureCreatorBtn.style.opacity = '0';
+                }
+            }
+        });
+        
+        // Set up signature creator button functionality
+        if (signatureCreatorBtn) {
+            signatureCreatorBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.currentSignatureElement = wrapperElement;
+                this.openSignatureCreator();
+            });
+        }
+    }
+
     setupImageUpload(element) {
         // Set up image upload functionality
         const imgElement = element.querySelector('img');
@@ -3029,6 +4078,377 @@ class MailTemplateBuilder {
         element.addEventListener('mouseleave', () => {
             uploadIndicator.style.opacity = '0';
         });
+    }
+
+    // Signature Creator Methods
+    openSignatureCreator() {
+        document.getElementById('signature-creator-modal').classList.remove('hidden');
+        this.initializeSignatureCreator();
+    }
+
+    initializeSignatureCreator() {
+        // Set up tabs
+        this.setupSignatureTabs();
+        
+        // Set up drawing canvas
+        this.setupDrawingCanvas();
+        
+        // Set up image upload
+        this.setupSignatureImageUpload();
+        
+        // Set up typed signature
+        this.setupTypedSignature();
+        
+        // Set up save functionality
+        this.setupSignatureSave();
+    }
+
+    setupSignatureTabs() {
+        const tabs = document.querySelectorAll('.tab-button');
+        const contents = document.querySelectorAll('.tab-content');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs
+                tabs.forEach(t => {
+                    t.classList.remove('active');
+                    t.classList.add('bg-gray-200', 'text-gray-700');
+                    t.classList.remove('bg-blue-600', 'text-white');
+                });
+                
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                tab.classList.remove('bg-gray-200', 'text-gray-700');
+                tab.classList.add('bg-blue-600', 'text-white');
+                
+                // Hide all content
+                contents.forEach(content => content.classList.add('hidden'));
+                
+                // Show corresponding content
+                const contentId = tab.id.replace('-tab', '-content');
+                document.getElementById(contentId).classList.remove('hidden');
+            });
+        });
+    }
+
+    setupDrawingCanvas() {
+        const canvas = document.getElementById('signature-canvas');
+        const ctx = canvas.getContext('2d');
+        const clearBtn = document.getElementById('clear-signature');
+        const penSizeInput = document.getElementById('pen-size');
+        const penSizeValue = document.getElementById('pen-size-value');
+        
+        let drawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // Set canvas properties
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        
+        // Update pen size
+        penSizeInput.addEventListener('input', () => {
+            ctx.lineWidth = penSizeInput.value;
+            penSizeValue.textContent = penSizeInput.value + 'px';
+        });
+        
+        // Clear canvas
+        clearBtn.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+        
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            drawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            
+            lastX = currentX;
+            lastY = currentY;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+        });
+        
+        canvas.addEventListener('mouseout', () => {
+            drawing = false;
+        });
+        
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            drawing = true;
+            lastX = touch.clientX - rect.left;
+            lastY = touch.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!drawing) return;
+            
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const currentX = touch.clientX - rect.left;
+            const currentY = touch.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            
+            lastX = currentX;
+            lastY = currentY;
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            drawing = false;
+        });
+    }
+
+    setupSignatureImageUpload() {
+        const uploadBtn = document.getElementById('upload-signature-btn');
+        const fileInput = document.getElementById('signature-file-input');
+        const preview = document.getElementById('uploaded-signature-preview');
+        const previewImg = document.getElementById('uploaded-signature-img');
+        
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                this.showNotification('Please select a valid image file', 'error');
+                return;
+            }
+            
+            // Validate file size (limit to 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                this.showNotification('File size must be less than 2MB', 'error');
+                return;
+            }
+            
+            // Read and preview file
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                previewImg.src = event.target.result;
+                preview.classList.remove('hidden');
+                this.uploadedSignatureData = event.target.result;
+            };
+            
+            reader.onerror = () => {
+                this.showNotification('Error reading file', 'error');
+            };
+            
+            reader.readAsDataURL(file);
+        });
+    }
+
+    setupTypedSignature() {
+        const nameInput = document.getElementById('typed-signature');
+        const fontSelect = document.getElementById('signature-font');
+        const preview = document.getElementById('typed-signature-preview');
+        
+        const updatePreview = () => {
+            const name = nameInput.value.trim();
+            const font = fontSelect.value;
+            
+            if (name) {
+                preview.innerHTML = `<span class="signature-font-preview" style="font-family: ${font}; font-size: 28px; color: #1f2937;">${name}</span>`;
+            } else {
+                preview.innerHTML = '<span class="text-gray-400">Preview will appear here</span>';
+            }
+        };
+        
+        nameInput.addEventListener('input', updatePreview);
+        fontSelect.addEventListener('change', updatePreview);
+        
+        // Initial update
+        updatePreview();
+    }
+
+    setupSignatureSave() {
+        const saveBtn = document.getElementById('save-signature');
+        
+        saveBtn.addEventListener('click', () => {
+            const activeTab = document.querySelector('.tab-button.active').id;
+            
+            switch (activeTab) {
+                case 'draw-signature-tab':
+                    this.saveDrawnSignature();
+                    break;
+                case 'upload-signature-tab':
+                    this.saveUploadedSignature();
+                    break;
+                case 'type-signature-tab':
+                    this.saveTypedSignature();
+                    break;
+            }
+        });
+    }
+
+    saveDrawnSignature() {
+        const canvas = document.getElementById('signature-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Check if canvas has content
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const hasContent = imageData.data.some(channel => channel !== 0);
+        
+        if (!hasContent) {
+            this.showNotification('Please draw your signature first', 'error');
+            return;
+        }
+        
+        // Convert canvas to image
+        const signatureDataUrl = canvas.toDataURL('image/png');
+        this.insertSignatureImage(signatureDataUrl);
+    }
+
+    saveUploadedSignature() {
+        if (!this.uploadedSignatureData) {
+            this.showNotification('Please upload a signature image first', 'error');
+            return;
+        }
+        
+        this.insertSignatureImage(this.uploadedSignatureData);
+    }
+
+    saveTypedSignature() {
+        const nameInput = document.getElementById('typed-signature');
+        const fontSelect = document.getElementById('signature-font');
+        
+        const name = nameInput.value.trim();
+        const font = fontSelect.value;
+        
+        if (!name) {
+            this.showNotification('Please enter your name first', 'error');
+            return;
+        }
+        
+        this.insertTypedSignature(name, font);
+    }
+
+    insertSignatureImage(imageDataUrl) {
+        if (!this.currentSignatureElement) return;
+        
+        const signatureContent = this.currentSignatureElement.querySelector('.signature-content');
+        if (!signatureContent) return;
+        
+        // Create signature image HTML
+        const signatureImageHtml = `
+            <div class="signature-image-container" style="margin: 10px 0;">
+                <img src="${imageDataUrl}" alt="Digital Signature" style="max-width: 200px; height: auto; display: block;">
+            </div>
+        `;
+        
+        // Insert the signature image at the end of the signature content
+        signatureContent.insertAdjacentHTML('beforeend', signatureImageHtml);
+        
+        this.closeSignatureCreator();
+        this.saveState();
+        this.showNotification('Digital signature added successfully!');
+    }
+
+    insertTypedSignature(name, font) {
+        if (!this.currentSignatureElement) return;
+        
+        const signatureContent = this.currentSignatureElement.querySelector('.signature-content');
+        if (!signatureContent) return;
+        
+        // Create typed signature HTML
+        const typedSignatureHtml = `
+            <div class="typed-signature-container" style="margin: 10px 0;">
+                <div style="font-family: ${font}; font-size: 24px; color: #1f2937; font-weight: 600;">${name}</div>
+            </div>
+        `;
+        
+        // Insert the typed signature at the end of the signature content
+        signatureContent.insertAdjacentHTML('beforeend', typedSignatureHtml);
+        
+        this.closeSignatureCreator();
+        this.saveState();
+        this.showNotification('Digital signature added successfully!');
+    }
+
+    closeSignatureCreator() {
+        document.getElementById('signature-creator-modal').classList.add('hidden');
+        this.currentSignatureElement = null;
+        this.uploadedSignatureData = null;
+        
+        // Reset forms
+        document.getElementById('signature-canvas').getContext('2d').clearRect(0, 0, 500, 200);
+        document.getElementById('signature-file-input').value = '';
+        document.getElementById('uploaded-signature-preview').classList.add('hidden');
+        document.getElementById('typed-signature').value = '';
+        document.getElementById('typed-signature-preview').innerHTML = '<span class="text-gray-400">Preview will appear here</span>';
+        
+        // Reset to first tab
+        document.querySelectorAll('.tab-button').forEach((tab, index) => {
+            tab.classList.toggle('active', index === 0);
+            if (index === 0) {
+                tab.classList.remove('bg-gray-200', 'text-gray-700');
+                tab.classList.add('bg-blue-600', 'text-white');
+            } else {
+                tab.classList.add('bg-gray-200', 'text-gray-700');
+                tab.classList.remove('bg-blue-600', 'text-white');
+            }
+        });
+        
+        document.querySelectorAll('.tab-content').forEach((content, index) => {
+            content.classList.toggle('hidden', index !== 0);
+        });
+    }
+
+    // Debug method to force setup all containers (helpful for testing)
+    forceSetupAllContainers() {
+        console.log('🔧 Force setup: Scanning all containers in canvas...');
+        const allContainers = this.canvas.querySelectorAll('.droppable-container');
+        console.log(`Found ${allContainers.length} total droppable containers in canvas`);
+        
+        allContainers.forEach((container, index) => {
+            console.log(`Checking container ${index + 1}:`, container.className);
+            if (!container.dataset.tooltipAdded) {
+                console.log(`🔨 Force setting up container ${index + 1}`);
+                this.addContainerClickTooltip(container);
+            } else {
+                console.log(`✅ Container ${index + 1} already set up`);
+            }
+        });
+        
+        const setupCount = this.canvas.querySelectorAll('.droppable-container[data-tooltip-added="true"]').length;
+        console.log(`🎯 Force setup complete: ${setupCount}/${allContainers.length} containers now have functionality`);
+        
+        if (setupCount < allContainers.length) {
+            console.warn('⚠️ Some containers still missing functionality!');
+        } else {
+            console.log('✅ All containers properly set up!');
+        }
+        
+        this.showNotification(`Force setup: ${setupCount}/${allContainers.length} containers configured`);
     }
 }
 
