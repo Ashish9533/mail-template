@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test - CSRF Fixed</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .token-display { background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 CSRF Token Test - Fixed Version</h1>
+    
+    <div class="test-section">
+        <h2>1. CSRF Token Status</h2>
+        <div id="token-status" class="token-display">
+            <strong>Token Status:</strong> <span id="token-value">Checking...</span>
+        </div>
+        <button onclick="checkCSRFToken()">Refresh Token Check</button>
+        <div id="csrf-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test Save Endpoint (Fixed)</h2>
+        <button onclick="testSaveWithCorrectCSRF()">Test Save with Correct CSRF</button>
+        <div id="save-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Manual CSRF Token Input</h2>
+        <input type="text" id="manual-token" placeholder="Paste CSRF token here" style="width: 400px; padding: 8px;">
+        <button onclick="testWithManualToken()">Test with Manual Token</button>
+        <div id="manual-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Get Fresh Token</h2>
+        <button onclick="getFreshToken()">Get Fresh CSRF Token</button>
+        <div id="fresh-result" class="result"></div>
+    </div>
+
+    <script>
+        let currentCSRFToken = null;
+
+        function checkCSRFToken() {
+            // Check multiple sources for CSRF token
+            const sources = [
+                { name: 'Meta tag', selector: 'meta[name="csrf-token"]', attr: 'content' },
+                { name: 'Hidden input', selector: 'input[name="_token"]', attr: 'value' },
+                { name: 'CSRF input', selector: '#csrf-token-input', attr: 'value' }
+            ];
+
+            let foundToken = null;
+            let tokenSource = null;
+
+            for (const source of sources) {
+                const element = document.querySelector(source.selector);
+                if (element) {
+                    const token = element.getAttribute ? element.getAttribute(source.attr) : element[source.attr];
+                    if (token) {
+                        foundToken = token;
+                        tokenSource = source.name;
+                        break;
+                    }
+                }
+            }
+
+            currentCSRFToken = foundToken;
+            
+            const statusElement = document.getElementById('token-value');
+            const resultDiv = document.getElementById('csrf-result');
+            
+            if (foundToken) {
+                statusElement.innerHTML = `<span style="color: green;">✓ Found via ${tokenSource}</span>`;
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <strong>✓ CSRF Token Found</strong><br>
+                        <strong>Source:</strong> ${tokenSource}<br>
+                        <strong>Token:</strong> <code style="font-size: 11px;">${foundToken}</code>
+                    </div>
+                `;
+            } else {
+                statusElement.innerHTML = '<span style="color: red;">✗ Not Found</span>';
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>✗ No CSRF Token Found</strong><br>
+                        Check if you're on the correct page: <a href="/mail-template" target="_blank">/mail-template</a>
+                    </div>
+                `;
+            }
+        }
+
+        async function testSaveWithCorrectCSRF() {
+            const resultDiv = document.getElementById('save-result');
+            
+            if (!currentCSRFToken) {
+                checkCSRFToken();
+                if (!currentCSRFToken) {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <strong>✗ No CSRF Token Available</strong><br>
+                            Please visit <a href="/mail-template" target="_blank">/mail-template</a> first
+                        </div>
+                    `;
+                    return;
+                }
+            }
+
+            try {
+                const testData = {
+                    name: 'Test Template ' + Date.now(),
+                    html: '<div style="padding: 20px; background: #f0f0f0;"><h1>Test Template</h1><p>This is a test email template created via API.</p></div>',
+                    css: 'body { font-family: Arial, sans-serif; }',
+                    config: { device: 'desktop', zoom: 1 }
+                };
+
+                console.log('Sending request with CSRF token:', currentCSRFToken);
+
+                const response = await fetch('/mail-template/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': currentCSRFToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(testData)
+                });
+
+                console.log('Response status:', response.status);
+
+                if (response.status === 419) {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <strong>✗ Still Getting 419 Error</strong><br>
+                            CSRF token might be expired. Try getting a fresh token.
+                        </div>
+                    `;
+                    return;
+                }
+
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = { error: 'Invalid JSON response', response: responseText };
+                }
+
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <strong>✅ Save Successful!</strong><br>
+                            Template ID: ${data.template.id}<br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <strong>✗ Save Failed (Status: ${response.status})</strong><br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>✗ Network Error:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+                console.error('Save Error:', error);
+            }
+        }
+
+        async function testWithManualToken() {
+            const manualToken = document.getElementById('manual-token').value.trim();
+            const resultDiv = document.getElementById('manual-result');
+            
+            if (!manualToken) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>✗ Please enter a CSRF token</strong>
+                    </div>
+                `;
+                return;
+            }
+
+            currentCSRFToken = manualToken;
+            resultDiv.innerHTML = `
+                <div style="background: #cce5ff; color: #004085; padding: 10px; border-radius: 4px;">
+                    <strong>Testing with manual token...</strong>
+                </div>
+            `;
+            
+            // Use the manual token to test
+            await testSaveWithCorrectCSRF();
+        }
+
+        async function getFreshToken() {
+            const resultDiv = document.getElementById('fresh-result');
+            
+            try {
+                resultDiv.innerHTML = '<div>Getting fresh token...</div>';
+                
+                // Get fresh token from Laravel
+                const response = await fetch('/csrf-token', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentCSRFToken = data.token;
+                    
+                    // Update meta tag if it exists
+                    const metaTag = document.querySelector('meta[name="csrf-token"]');
+                    if (metaTag) {
+                        metaTag.setAttribute('content', data.token);
+                    }
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <strong>✅ Fresh Token Obtained</strong><br>
+                            <code style="font-size: 11px;">${data.token}</code>
+                        </div>
+                    `;
+                    
+                    // Update the main status
+                    checkCSRFToken();
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <strong>✗ Failed to get fresh token</strong><br>
+                            Status: ${response.status}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>✗ Error getting fresh token:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-check token on page load
+        window.addEventListener('load', () => {
+            checkCSRFToken();
+        });
+    </script>
+
+    <div style="margin-top: 40px; padding: 20px; background: #e3f2fd; border-radius: 8px;">
+        <h3>🔧 Quick Fix Instructions:</h3>
+        <ol>
+            <li><strong>If token is found but save fails:</strong> The token might be expired. Click "Get Fresh Token"</li>
+            <li><strong>If no token found:</strong> Visit <a href="/mail-template" target="_blank">/mail-template</a> first</li>
+            <li><strong>If still failing:</strong> Check browser console (F12) for detailed errors</li>
+            <li><strong>Test manually:</strong> Copy the token and paste in the manual test section</li>
+        </ol>
+        
+        <p><strong>Success criteria:</strong> You should see "✅ Save Successful!" message when the test passes.</p>
+    </div>
+</body>
+</html> 

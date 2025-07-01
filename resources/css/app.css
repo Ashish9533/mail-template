@@ -1,0 +1,124 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* Mail Template Builder Styles */
+.email-component {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.email-component:hover {
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.email-component.selected {
+    border-color: #3b82f6 !important;
+    outline: none !important;
+}
+
+.email-component .placeholder-text {
+    color: #9ca3af;
+    font-style: italic;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+    border: 2px dashed #e5e7eb;
+    border-radius: 8px;
+    background-color: #f9fafb;
+}
+
+.component-item,
+.template-item {
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.component-item:hover,
+.template-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar for better UX */
+.overflow-y-auto::-webkit-scrollbar {
+    width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Modal animations */
+[id$="-modal"] {
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Button hover effects */
+button {
+    transition: all 0.2s ease;
+}
+
+button:hover {
+    transform: translateY(-1px);
+}
+
+/* Email component specific styles */
+.email-button {
+    transition: all 0.2s ease;
+}
+
+.email-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.email-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.email-social a {
+    transition: all 0.2s ease;
+}
+
+.email-social a:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+/* Notification styling */
+#notification {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
