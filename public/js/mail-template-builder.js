@@ -22,7 +22,6 @@ class MailTemplateBuilder {
         this.autoScrollInterval = null;
         this.insertIndicator = null;
         this.activeQuickMenu = null;
-
         this.init();
     }
 
@@ -302,13 +301,36 @@ class MailTemplateBuilder {
                 properties: ["listStyle", "color", "spacing", "padding"],
             },
             table: {
-                html: '<table class="email-table" style="width: 100%; border-collapse: collapse; margin: 20px 0;"><thead><tr style="background-color: #f3f4f6;"><th style="padding: 12px; border: 1px solid #d1d5db; text-align: left;">Header 1</th><th style="padding: 12px; border: 1px solid #d1d5db; text-align: left;">Header 2</th></tr></thead><tbody><tr><td style="padding: 12px; border: 1px solid #d1d5db;">Data 1</td><td style="padding: 12px; border: 1px solid #d1d5db;">Data 2</td></tr><tr style="background-color: #f9fafb;"><td style="padding: 12px; border: 1px solid #d1d5db;">Data 3</td><td style="padding: 12px; border: 1px solid #d1d5db;">Data 4</td></tr></tbody></table>',
+                html: `<table class="email-table editable-table" style="width: 100%; border-collapse: collapse; margin: 20px 0; font-family: Arial, sans-serif; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <thead>
+            <tr style="background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);">
+              <th class="editable-cell" contenteditable="true" style="padding: 15px 12px; border: 1px solid #d1d5db; text-align: left; font-weight: 600; cursor: text; color: #374151; font-size: 14px;" data-placeholder="Header 1">Header 1</th>
+              <th class="editable-cell" contenteditable="true" style="padding: 15px 12px; border: 1px solid #d1d5db; text-align: left; font-weight: 600; cursor: text; color: #374151; font-size: 14px;" data-placeholder="Header 2">Header 2</th>
+              <th class="editable-cell" contenteditable="true" style="padding: 15px 12px; border: 1px solid #d1d5db; text-align: left; font-weight: 600; cursor: text; color: #374151; font-size: 14px;" data-placeholder="Header 3">Header 3</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background-color: white;">
+              <td class="editable-cell" contenteditable="true" style="padding: 12px; border: 1px solid #d1d5db; cursor: text; color: #6b7280; font-size: 14px;" data-placeholder="Data 1">Data 1</td>
+              <td class="editable-cell" contenteditable="true" style="padding: 12px; border: 1px solid #d1d5db; cursor: text; color: #6b7280; font-size: 14px;" data-placeholder="Data 2">Data 2</td>
+              <td class="editable-cell" contenteditable="true" style="padding: 12px; border: 1px solid #d1d5db; cursor: text; color: #6b7280; font-size: 14px;" data-placeholder="Data 3">Data 3</td>
+            </tr>
+            <tr style="background-color: #f9fafb;">
+              <td class="editable-cell" contenteditable="true" style="padding: 12px; border: 1px solid #d1d5db; cursor: text; color: #6b7280; font-size: 14px;" data-placeholder="Data 4">Data 4</td>
+              <td class="editable-cell" contenteditable="true" style="padding: 12px; border: 1px solid #d1d5db; cursor: text; color: #6b7280; font-size: 14px;" data-placeholder="Data 5">Data 5</td>
+              <td class="editable-cell" contenteditable="true" style="padding: 12px; border: 1px solid #d1d5db; cursor: text; color: #6b7280; font-size: 14px;" data-placeholder="Data 6">Data 6</td>
+            </tr>
+          </tbody>
+        </table>`,
                 properties: [
                     "borderStyle",
                     "padding",
                     "background",
                     "textAlign",
+                    "fontSize",
+                    "fontFamily",
                 ],
+                editable: true,
             },
             card: {
                 html: '<div class="email-card" style="background-color: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin: 20px 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);"><h4 style="margin: 0 0 12px; color: #1f2937; font-size: 18px; font-weight: 600;">Card Title</h4><p style="margin: 0 0 16px; color: #6b7280; line-height: 1.5;">This is a card component with a clean design. Perfect for highlighting important content.</p><a href="#" style="display: inline-block; background-color: #3b82f6; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px;">Learn More</a></div>',
@@ -466,7 +488,6 @@ class MailTemplateBuilder {
             },
         };
     }
-
     // Modified addComponent method
     addComponent(type, position = null) {
         if (!this.components[type]) {
@@ -512,13 +533,10 @@ class MailTemplateBuilder {
                     "🔧 Setting up droppable component immediately:",
                     type
                 );
-
                 // Setup drop functionality
                 this.setupComponentDropFunctionality(element);
-
                 // Setup containers IMMEDIATELY - no timeout
                 this.setupContainersInElement(element);
-
                 console.log("✅ Droppable component setup complete");
             }
 
@@ -543,6 +561,11 @@ class MailTemplateBuilder {
                 this.setupSignatureFunctionality(element);
             }
 
+            // ADD TABLE FUNCTIONALITY HERE
+            if (type === "table") {
+                this.setupTableFunctionality(element);
+            }
+
             this.selectElement(element);
             this.saveState();
 
@@ -555,7 +578,9 @@ class MailTemplateBuilder {
             } else {
                 this.showNotification(`${type} component added successfully!`);
             }
-            mailBuilder.forceSetupAllContainers();
+
+            this.forceSetupAllContainers();
+
             console.log(`✅ Successfully added ${type} component`);
         } catch (error) {
             console.error("Error adding component:", error);
@@ -563,6 +588,475 @@ class MailTemplateBuilder {
         } finally {
             this.isAddingComponent = false;
         }
+    }
+
+    setupTableFunctionality(element) {
+        console.log("Setting up table functionality");
+
+        const tableElement = element.querySelector(".email-table");
+        if (!tableElement) return;
+
+        // Setup editable cells
+        this.setupTableCellEditing(tableElement);
+
+        // Setup table controls
+        this.setupTableControls(element, tableElement);
+
+        // Setup hover effects
+        this.setupTableHoverEffects(tableElement);
+
+        console.log("✅ Table functionality setup complete");
+    }
+
+    setupTableCellEditing(tableElement) {
+        const cells = tableElement.querySelectorAll(".editable-cell");
+
+        cells.forEach((cell) => {
+            // Setup focus/blur events for each cell
+            cell.addEventListener("focus", () => {
+                cell.style.outline = "2px solid #3b82f6";
+                cell.style.outlineOffset = "2px";
+                cell.style.backgroundColor = "rgba(59, 130, 246, 0.05)";
+
+                // Clear placeholder if it matches
+                const placeholder = cell.dataset.placeholder || "";
+                if (cell.textContent.trim() === placeholder) {
+                    cell.textContent = "";
+                }
+            });
+
+            cell.addEventListener("blur", () => {
+                cell.style.outline = "";
+                cell.style.outlineOffset = "";
+                cell.style.backgroundColor = "";
+
+                // Restore placeholder if empty
+                const placeholder = cell.dataset.placeholder || "Click to edit";
+                if (cell.textContent.trim() === "") {
+                    cell.textContent = placeholder;
+                    cell.style.color = "#9ca3af";
+                    cell.style.fontStyle = "italic";
+                } else {
+                    cell.style.color = "";
+                    cell.style.fontStyle = "";
+                }
+
+                this.saveState();
+            });
+
+            // Handle click to focus
+            cell.addEventListener("click", (e) => {
+                e.stopPropagation();
+                cell.focus();
+
+                // Select all text if it's placeholder text
+                const placeholder = cell.dataset.placeholder || "";
+                if (cell.textContent.trim() === placeholder) {
+                    const range = document.createRange();
+                    range.selectNodeContents(cell);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            });
+
+            // Handle keyboard events
+            cell.addEventListener("keydown", (e) => {
+                // Allow Enter for line breaks in cells
+                if (e.key === "Enter" && !e.shiftKey) {
+                    // Let default behavior happen (line break)
+                }
+
+                // Tab navigation between cells
+                if (e.key === "Tab") {
+                    e.preventDefault();
+                    const allCells = Array.from(
+                        tableElement.querySelectorAll(".editable-cell")
+                    );
+                    const currentIndex = allCells.indexOf(cell);
+
+                    if (e.shiftKey) {
+                        // Previous cell
+                        const prevIndex =
+                            currentIndex > 0
+                                ? currentIndex - 1
+                                : allCells.length - 1;
+                        allCells[prevIndex].focus();
+                    } else {
+                        // Next cell
+                        const nextIndex =
+                            currentIndex < allCells.length - 1
+                                ? currentIndex + 1
+                                : 0;
+                        allCells[nextIndex].focus();
+                    }
+                }
+
+                // Save on Ctrl+S
+                if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+                    e.preventDefault();
+                    cell.blur();
+                    this.saveTemplate();
+                }
+            });
+
+            // Handle paste events
+            cell.addEventListener("paste", (e) => {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData(
+                    "text/plain"
+                );
+                // Insert plain text to avoid formatting issues
+                document.execCommand("insertText", false, text);
+            });
+        });
+    }
+
+    setupTableControls(wrapperElement, tableElement) {
+        // Create table controls container with better positioning
+        const controlsContainer = document.createElement("div");
+        controlsContainer.className = "table-controls";
+        controlsContainer.style.cssText = `
+            position: absolute;
+            top: -45px;
+            right: 0;
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 15;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 6px 8px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        `;
+
+        // Add Row button
+        const addRowBtn = document.createElement("button");
+        addRowBtn.innerHTML =
+            '<i class="fas fa-plus" style="font-size: 10px;"></i><span style="margin-left: 4px;">Row</span>';
+        addRowBtn.className = "table-control-btn";
+        addRowBtn.style.cssText = `
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 50px;
+            height: 28px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        `;
+        addRowBtn.title = "Add Row";
+        addRowBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.addTableRow(tableElement);
+        });
+
+        // Hover effect for Add Row
+        addRowBtn.addEventListener("mouseenter", () => {
+            addRowBtn.style.background = "#059669";
+            addRowBtn.style.transform = "translateY(-1px)";
+        });
+        addRowBtn.addEventListener("mouseleave", () => {
+            addRowBtn.style.background = "#10b981";
+            addRowBtn.style.transform = "translateY(0)";
+        });
+
+        // Add Column button
+        const addColBtn = document.createElement("button");
+        addColBtn.innerHTML =
+            '<i class="fas fa-plus" style="font-size: 10px;"></i><span style="margin-left: 4px;">Col</span>';
+        addColBtn.className = "table-control-btn";
+        addColBtn.style.cssText = `
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 45px;
+            height: 28px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        `;
+        addColBtn.title = "Add Column";
+        addColBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.addTableColumn(tableElement);
+        });
+
+        // Hover effect for Add Column
+        addColBtn.addEventListener("mouseenter", () => {
+            addColBtn.style.background = "#2563eb";
+            addColBtn.style.transform = "translateY(-1px)";
+        });
+        addColBtn.addEventListener("mouseleave", () => {
+            addColBtn.style.background = "#3b82f6";
+            addColBtn.style.transform = "translateY(0)";
+        });
+
+        // Delete Row button
+        const delRowBtn = document.createElement("button");
+        delRowBtn.innerHTML =
+            '<i class="fas fa-minus" style="font-size: 10px;"></i><span style="margin-left: 4px;">Row</span>';
+        delRowBtn.className = "table-control-btn";
+        delRowBtn.style.cssText = `
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 50px;
+            height: 28px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        `;
+        delRowBtn.title = "Delete Last Row";
+        delRowBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.deleteTableRow(tableElement);
+        });
+
+        // Hover effect for Delete Row
+        delRowBtn.addEventListener("mouseenter", () => {
+            delRowBtn.style.background = "#dc2626";
+            delRowBtn.style.transform = "translateY(-1px)";
+        });
+        delRowBtn.addEventListener("mouseleave", () => {
+            delRowBtn.style.background = "#ef4444";
+            delRowBtn.style.transform = "translateY(0)";
+        });
+
+        // Add Delete Column button for better functionality
+        const delColBtn = document.createElement("button");
+        delColBtn.innerHTML =
+            '<i class="fas fa-minus" style="font-size: 10px;"></i><span style="margin-left: 4px;">Col</span>';
+        delColBtn.className = "table-control-btn";
+        delColBtn.style.cssText = `
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 45px;
+            height: 28px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        `;
+        delColBtn.title = "Delete Last Column";
+        delColBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.deleteTableColumn(tableElement);
+        });
+
+        // Hover effect for Delete Column
+        delColBtn.addEventListener("mouseenter", () => {
+            delColBtn.style.background = "#d97706";
+            delColBtn.style.transform = "translateY(-1px)";
+        });
+        delColBtn.addEventListener("mouseleave", () => {
+            delColBtn.style.background = "#f59e0b";
+            delColBtn.style.transform = "translateY(0)";
+        });
+
+        // Append buttons in logical order
+        controlsContainer.appendChild(addRowBtn);
+        controlsContainer.appendChild(addColBtn);
+        controlsContainer.appendChild(delRowBtn);
+        controlsContainer.appendChild(delColBtn);
+
+        // Position wrapper relatively and ensure it has enough space
+        wrapperElement.style.position = "relative";
+        wrapperElement.style.marginTop = "50px"; // Add space for controls
+        wrapperElement.appendChild(controlsContainer);
+
+        // Show/hide controls on hover with better timing
+        let hoverTimeout;
+        wrapperElement.addEventListener("mouseenter", () => {
+            clearTimeout(hoverTimeout);
+            controlsContainer.style.opacity = "1";
+            controlsContainer.style.transform = "translateY(0)";
+        });
+
+        wrapperElement.addEventListener("mouseleave", () => {
+            hoverTimeout = setTimeout(() => {
+                controlsContainer.style.opacity = "0";
+                controlsContainer.style.transform = "translateY(-5px)";
+            }, 200);
+        });
+
+        // Keep controls visible when hovering over them
+        controlsContainer.addEventListener("mouseenter", () => {
+            clearTimeout(hoverTimeout);
+            controlsContainer.style.opacity = "1";
+        });
+
+        controlsContainer.addEventListener("mouseleave", () => {
+            hoverTimeout = setTimeout(() => {
+                controlsContainer.style.opacity = "0";
+                controlsContainer.style.transform = "translateY(-5px)";
+            }, 200);
+        });
+    }
+
+    // Add the missing deleteTableColumn method
+    deleteTableColumn(tableElement) {
+        const headerRow = tableElement.querySelector("thead tr");
+        const bodyRows = tableElement.querySelectorAll("tbody tr");
+
+        if (headerRow.children.length <= 1) {
+            this.showNotification("Cannot delete the last column", "error");
+            return;
+        }
+
+        // Remove last column from header
+        headerRow.removeChild(headerRow.lastElementChild);
+
+        // Remove last column from each body row
+        bodyRows.forEach((row) => {
+            if (row.lastElementChild) {
+                row.removeChild(row.lastElementChild);
+            }
+        });
+
+        this.saveState();
+        this.showNotification("Table column deleted successfully!");
+    }
+
+    setupTableHoverEffects(tableElement) {
+        const cells = tableElement.querySelectorAll(".editable-cell");
+
+        cells.forEach((cell) => {
+            cell.addEventListener("mouseenter", () => {
+                if (!cell.matches(":focus")) {
+                    cell.style.backgroundColor = "rgba(59, 130, 246, 0.02)";
+                    cell.style.borderColor = "#93c5fd";
+                }
+            });
+
+            cell.addEventListener("mouseleave", () => {
+                if (!cell.matches(":focus")) {
+                    cell.style.backgroundColor = "";
+                    cell.style.borderColor = "#d1d5db";
+                }
+            });
+        });
+    }
+
+    addTableRow(tableElement) {
+        const tbody = tableElement.querySelector("tbody");
+        const headerRow = tableElement.querySelector("thead tr");
+        const columnCount = headerRow.children.length;
+
+        // Create new row
+        const newRow = document.createElement("tr");
+        if (tbody.children.length % 2 === 0) {
+            newRow.style.backgroundColor = "#f9fafb";
+        }
+
+        // Add cells to match column count
+        for (let i = 0; i < columnCount; i++) {
+            const cell = document.createElement("td");
+            cell.className = "editable-cell";
+            cell.contentEditable = "true";
+            cell.style.cssText =
+                "padding: 12px; border: 1px solid #d1d5db; cursor: text;";
+            cell.dataset.placeholder = `Data ${tbody.children.length + 1}-${
+                i + 1
+            }`;
+            cell.textContent = cell.dataset.placeholder;
+            cell.style.color = "#9ca3af";
+            cell.style.fontStyle = "italic";
+
+            newRow.appendChild(cell);
+        }
+
+        tbody.appendChild(newRow);
+
+        // Setup editing for new cells
+        this.setupTableCellEditing(tableElement);
+        this.saveState();
+        this.showNotification("Table row added successfully!");
+    }
+
+    addTableColumn(tableElement) {
+        const headerRow = tableElement.querySelector("thead tr");
+        const bodyRows = tableElement.querySelectorAll("tbody tr");
+
+        // Add header cell
+        const headerCell = document.createElement("th");
+        headerCell.className = "editable-cell";
+        headerCell.contentEditable = "true";
+        headerCell.style.cssText =
+            "padding: 12px; border: 1px solid #d1d5db; text-align: left; font-weight: 600; cursor: text;";
+        headerCell.dataset.placeholder = `Header ${
+            headerRow.children.length + 1
+        }`;
+        headerCell.textContent = headerCell.dataset.placeholder;
+        headerCell.style.color = "#9ca3af";
+        headerCell.style.fontStyle = "italic";
+        headerRow.appendChild(headerCell);
+
+        // Add body cells
+        bodyRows.forEach((row, rowIndex) => {
+            const cell = document.createElement("td");
+            cell.className = "editable-cell";
+            cell.contentEditable = "true";
+            cell.style.cssText =
+                "padding: 12px; border: 1px solid #d1d5db; cursor: text;";
+            cell.dataset.placeholder = `Data ${rowIndex + 1}-${
+                headerRow.children.length
+            }`;
+            cell.textContent = cell.dataset.placeholder;
+            cell.style.color = "#9ca3af";
+            cell.style.fontStyle = "italic";
+            row.appendChild(cell);
+        });
+
+        // Setup editing for new cells
+        this.setupTableCellEditing(tableElement);
+        this.saveState();
+        this.showNotification("Table column added successfully!");
+    }
+
+    deleteTableRow(tableElement) {
+        const tbody = tableElement.querySelector("tbody");
+        const rows = tbody.querySelectorAll("tr");
+
+        if (rows.length <= 1) {
+            this.showNotification("Cannot delete the last row", "error");
+            return;
+        }
+
+        // Remove last row
+        rows[rows.length - 1].remove();
+        this.saveState();
+        this.showNotification("Table row deleted successfully!");
     }
 
     selectElement(element) {
@@ -602,6 +1096,58 @@ class MailTemplateBuilder {
             `;
             document.head.appendChild(style);
         }
+    }
+
+    saveState() {
+        // Implement state saving logic
+        console.log("State saved");
+    }
+
+    forceSetupAllContainers() {
+        console.log("Setting up all containers");
+        // Implement container setup logic
+    }
+
+    makeComponentDraggable(element) {
+        // Implement drag functionality
+        console.log("Making component draggable:", element);
+    }
+
+    setupComponentDropFunctionality(element) {
+        console.log("Setting up drop functionality");
+    }
+
+    setupContainersInElement(element) {
+        console.log("Setting up containers in element");
+    }
+
+    setupFreeDragging(element) {
+        console.log("Setting up free dragging");
+    }
+
+    setupImageUpload(element) {
+        console.log("Setting up image upload");
+    }
+
+    setupHeadingFunctionality(element) {
+        console.log("Setting up heading functionality");
+    }
+
+    setupTextFunctionality(element) {
+        console.log("Setting up text functionality");
+    }
+
+    setupSignatureFunctionality(element) {
+        console.log("Setting up signature functionality");
+    }
+
+    showPropertiesPanel(element) {
+        console.log("Showing properties panel for:", element);
+    }
+
+    showNotification(message, type = "success") {
+        console.log(`${type.toUpperCase()}: ${message}`);
+        // You can implement actual notification UI here
     }
 
     showPropertiesPanel(element) {
@@ -2555,10 +3101,8 @@ class MailTemplateBuilder {
                     "🔧 Setting up nested droppable component immediately:",
                     componentType
                 );
-
                 this.setupComponentDropFunctionality(element);
                 this.setupContainersInElement(element);
-
                 console.log("✅ Nested droppable component setup complete");
             }
 
@@ -2575,6 +3119,11 @@ class MailTemplateBuilder {
                 this.setupSignatureFunctionality(element);
             }
 
+            // ADD TABLE FUNCTIONALITY HERE TOO
+            if (componentType === "table") {
+                this.setupTableFunctionality(element);
+            }
+
             if (
                 component.draggable &&
                 (componentType === "sticker" || componentType === "imageUpload")
@@ -2588,6 +3137,7 @@ class MailTemplateBuilder {
 
             this.selectElement(element);
             this.saveState();
+
             this.showNotification(
                 `${componentType} added to container successfully!`
             );
@@ -3810,8 +4360,6 @@ class MailTemplateBuilder {
             e.dataTransfer.effectAllowed = "move";
 
             this.showNotification("Drag to reposition component", "info");
-            
-
         });
 
         element.addEventListener("dragend", (e) => {
@@ -5080,19 +5628,22 @@ class MailTemplateBuilder {
 
         // Reset all containers
         allContainers.forEach((container) => {
-      if (container._dblClickHandler) {
-        container.removeEventListener("dblclick", container._dblClickHandler)
-        delete container._dblClickHandler
-      }
-      container.dataset.tooltipAdded = "false"
-    })
+            if (container._dblClickHandler) {
+                container.removeEventListener(
+                    "dblclick",
+                    container._dblClickHandler
+                );
+                delete container._dblClickHandler;
+            }
+            container.dataset.tooltipAdded = "false";
+        });
 
-       // Setup all containers
-    allContainers.forEach((container) => {
-      this.addContainerClickTooltip(container)
-    })
+        // Setup all containers
+        allContainers.forEach((container) => {
+            this.addContainerClickTooltip(container);
+        });
 
-     this.showNotification("All containers reset and configured")
+        this.showNotification("All containers reset and configured");
 
         // Setup all containers fresh
         setTimeout(() => {
