@@ -1668,7 +1668,8 @@ class MailTemplateBuilder {
                     ? "bg-blue-100 ring-2 ring-blue-400"
                     : ""
             }" 
-                 data-sticker="${sticker}" onclick="mailBuilder.selectStickerInProperties('${sticker}')">
+                 data-sticker="${sticker}" 
+                 onclick="window.mailBuilder.selectStickerInProperties('${sticker}')">
                 ${sticker}
             </div>
         `
@@ -1677,29 +1678,44 @@ class MailTemplateBuilder {
     }
 
     selectStickerInProperties(sticker) {
+        console.log("Selecting sticker:", sticker);
+
         if (this.selectedElement) {
             const firstChild = this.selectedElement.firstElementChild;
             if (firstChild) {
+                // Update the sticker content
                 firstChild.textContent = sticker;
 
                 // Update the visual selection in the properties panel
-                document
-                    .querySelectorAll(".sticker-option")
-                    .forEach((option) => {
-                        option.classList.remove(
-                            "bg-blue-100",
-                            "ring-2",
-                            "ring-blue-400"
-                        );
-                    });
+                const stickerOptions =
+                    document.querySelectorAll(".sticker-option");
+                stickerOptions.forEach((option) => {
+                    option.classList.remove(
+                        "bg-blue-100",
+                        "ring-2",
+                        "ring-blue-400"
+                    );
+                });
 
-                document
-                    .querySelector(`[data-sticker="${sticker}"]`)
-                    .classList.add("bg-blue-100", "ring-2", "ring-blue-400");
+                const selectedOption = document.querySelector(
+                    `[data-sticker="${sticker}"]`
+                );
+                if (selectedOption) {
+                    selectedOption.classList.add(
+                        "bg-blue-100",
+                        "ring-2",
+                        "ring-blue-400"
+                    );
+                }
 
                 this.saveState();
                 this.showNotification(`Sticker changed to ${sticker}`);
             }
+        } else {
+            this.showNotification(
+                "Please select a sticker component first",
+                "error"
+            );
         }
     }
 
