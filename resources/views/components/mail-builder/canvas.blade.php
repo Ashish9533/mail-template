@@ -92,25 +92,20 @@
                     
                     <!-- Selection Overlay -->
                     <div id="selectionOverlay" class="absolute inset-0 pointer-events-none">
-                        <div id="selectionBox" class="hidden absolute border-2 border-blue-500 bg-blue-500 bg-opacity-10">
-                            <!-- Selection handles -->
-                            <div class="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <div class="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <div class="absolute -bottom-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <div class="absolute -bottom-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <div id="selectionBox" class="hidden absolute border-2 border-blue-500 bg-blue-500 bg-opacity-10"></div>
+                        
+                        <!-- Resize Handles -->
+                        <div id="resizeHandles" class="hidden absolute">
+                            <div class="resize-handle resize-handle-n absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-n-resize pointer-events-auto"></div>
+                            <div class="resize-handle resize-handle-s absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-s-resize pointer-events-auto"></div>
+                            <div class="resize-handle resize-handle-e absolute top-1/2 -right-1 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-e-resize pointer-events-auto"></div>
+                            <div class="resize-handle resize-handle-w absolute top-1/2 -left-1 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-w-resize pointer-events-auto"></div>
+                            <div class="resize-handle resize-handle-ne absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full cursor-ne-resize pointer-events-auto"></div>
+                            <div class="resize-handle resize-handle-nw absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full cursor-nw-resize pointer-events-auto"></div>
+                            <div class="resize-handle resize-handle-se absolute -bottom-1 -right-1 w-2 h-2 bg-blue-500 rounded-full cursor-se-resize pointer-events-auto"></div>
+                            <div class="resize-handle resize-handle-sw absolute -bottom-1 -left-1 w-2 h-2 bg-blue-500 rounded-full cursor-sw-resize pointer-events-auto"></div>
+                            <div id="rotationHandle" class="absolute w-4 h-4 bg-green-500 rounded-full cursor-grab -top-6 left-1/2 -translate-x-1/2 pointer-events-auto"></div>
                         </div>
-                    </div>
-                    
-                    <!-- Resize Handles -->
-                    <div id="resizeHandles" class="hidden">
-                        <div class="resize-handle resize-handle-n absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-n-resize"></div>
-                        <div class="resize-handle resize-handle-s absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-s-resize"></div>
-                        <div class="resize-handle resize-handle-e absolute top-1/2 -right-1 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-e-resize"></div>
-                        <div class="resize-handle resize-handle-w absolute top-1/2 -left-1 transform -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-w-resize"></div>
-                        <div class="resize-handle resize-handle-ne absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full cursor-ne-resize"></div>
-                        <div class="resize-handle resize-handle-nw absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full cursor-nw-resize"></div>
-                        <div class="resize-handle resize-handle-se absolute -bottom-1 -right-1 w-2 h-2 bg-blue-500 rounded-full cursor-se-resize"></div>
-                        <div class="resize-handle resize-handle-sw absolute -bottom-1 -left-1 w-2 h-2 bg-blue-500 rounded-full cursor-sw-resize"></div>
                     </div>
                 </div>
                 
@@ -140,6 +135,10 @@
             <p class="text-sm text-gray-600 mt-2">Loading template...</p>
         </div>
     </div>
+</div>
+
+<div id="contextMenu" class="hidden absolute bg-white shadow-lg rounded-md py-2 z-50">
+    <a href="#" class="context-menu-item block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-action="edit">Edit</a>
 </div>
 
 <style>
@@ -285,5 +284,9 @@ input:checked ~ div .dot {
 
 #canvasContainer::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
+}
+
+#rotationHandle {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>') 12 12, auto;
 }
 </style> 

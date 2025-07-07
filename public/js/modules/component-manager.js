@@ -39,25 +39,7 @@ export class ComponentManager {
     }
     
     setupComponentLibrary() {
-        // Setup emoji categories
-        this.setupEmojiSystem();
-    }
-    
-    setupEmojiSystem() {
-        const emojiCategories = document.querySelectorAll('.emoji-category-btn');
-        const emojiGrid = document.getElementById('emojiGrid');
-        
-        if (emojiCategories.length && emojiGrid) {
-            emojiCategories.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    this.switchEmojiCategory(e.target.dataset.category);
-                    this.updateEmojiCategoryUI(e.target);
-                });
-            });
-            
-            // Load default category
-            this.switchEmojiCategory('smileys');
-        }
+        // This is now handled by the StickerManager
     }
     
     handleCanvasClick(e) {
@@ -131,11 +113,13 @@ export class ComponentManager {
         
         const rect = element.getBoundingClientRect();
         const canvasRect = this.canvas.getBoundingClientRect();
+        const currentRotation = this.builder.getManager('rotation')?.getCurrentRotation(element) || 0;
         
         selectionBox.style.left = (rect.left - canvasRect.left) + 'px';
         selectionBox.style.top = (rect.top - canvasRect.top) + 'px';
         selectionBox.style.width = rect.width + 'px';
         selectionBox.style.height = rect.height + 'px';
+        selectionBox.style.transform = `rotate(${currentRotation}deg)`;
         selectionBox.classList.remove('hidden');
     }
     
@@ -153,14 +137,36 @@ export class ComponentManager {
         const rect = element.getBoundingClientRect();
         const canvasRect = this.canvas.getBoundingClientRect();
         
+        // The container for handles should match the unrotated element's bounding box
+        const unrotatedRect = {
+            width: element.offsetWidth,
+            height: element.offsetHeight,
+        };
+
+        const currentRotation = this.builder.getManager('rotation')?.getCurrentRotation(element) || 0;
+        const rad = currentRotation * (Math.PI / 180);
+        
         handles.style.left = (rect.left - canvasRect.left) + 'px';
         handles.style.top = (rect.top - canvasRect.top) + 'px';
         handles.style.width = rect.width + 'px';
         handles.style.height = rect.height + 'px';
+        handles.style.transform = `rotate(${currentRotation}deg)`;
+
         handles.classList.remove('hidden');
         
         // Setup resize functionality
         this.setupResizeHandles(element, handles);
+
+        // Setup rotation functionality
+        const rotationHandle = handles.querySelector('#rotationHandle');
+        if (rotationHandle) {
+            if (element.classList.contains('sticker')) {
+                rotationHandle.style.display = 'block';
+                this.builder.getManager('rotation').makeRotatable(element, rotationHandle);
+            } else {
+                rotationHandle.style.display = 'none';
+            }
+        }
     }
     
     hideResizeHandles() {
@@ -315,10 +321,29 @@ export class ComponentManager {
             
             element.addEventListener('blur', finishEditing, { once: true });
             element.addEventListener('keydown', (e) => {
+                // On Enter, insert a <br> tag instead of creating a new paragraph
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    element.blur();
+                    
+                    const selection = window.getSelection();
+                    if (!selection.rangeCount) return;
+
+                    const range = selection.getRangeAt(0);
+                    const br = document.createElement('br');
+                    const zeroWidthSpace = document.createTextNode('\u200B'); // Invisible character
+
+                    range.deleteContents();
+                    range.insertNode(br);
+                    range.insertNode(zeroWidthSpace);
+
+                    // Move cursor after the invisible character
+                    range.setStartAfter(zeroWidthSpace);
+                    range.collapse(true);
+                    
+                    selection.removeAllRanges();
+                    selection.addRange(range);
                 }
+                
                 if (e.key === 'Escape') {
                     element.innerHTML = originalContent;
                     element.blur();
@@ -407,48 +432,6 @@ export class ComponentManager {
                 arrow.style.transform = 'rotate(180deg)';
             }
         }
-    }
-    
-    switchEmojiCategory(category) {
-        const emojiGrid = document.getElementById('emojiGrid');
-        if (!emojiGrid) return;
-        
-        const emojis = this.getEmojisByCategory(category);
-        
-        emojiGrid.innerHTML = emojis.map(emoji => 
-            `<div class="emoji-item p-1 cursor-pointer hover:bg-gray-100 rounded text-center" 
-                  draggable="true" 
-                  data-type="emoji" 
-                  data-emoji="${emoji}"
-                  title="${emoji}">${emoji}</div>`
-        ).join('');
-        
-        // Make emojis draggable
-        const emojiItems = emojiGrid.querySelectorAll('.emoji-item');
-        emojiItems.forEach(item => {
-            this.builder.getManager('dragDrop')?.setupDraggableComponent(item);
-        });
-    }
-    
-    updateEmojiCategoryUI(activeBtn) {
-        const categoryBtns = document.querySelectorAll('.emoji-category-btn');
-        categoryBtns.forEach(btn => btn.classList.remove('active'));
-        activeBtn.classList.add('active');
-    }
-    
-    getEmojisByCategory(category) {
-        const emojiSets = {
-            smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩'],
-            people: ['👨', '👩', '👴', '👵', '👶', '👼', '👸', '🤴', '👷', '💂', '🕵️', '👩‍⚕️', '👨‍⚕️', '👩‍🌾', '👨‍🌾', '👩‍🍳', '👨‍🍳', '👩‍🎓', '👨‍🎓', '👩‍🎤', '👨‍🎤', '👩‍🏫', '👨‍🏫', '👩‍🏭', '👨‍🏭', '👩‍💻', '👨‍💻', '👩‍💼', '👨‍💼', '👩‍🔧'],
-            nature: ['🌱', '🌿', '🍀', '🌳', '🌲', '🌴', '🌵', '🌷', '🌸', '🌺', '🌻', '🌹', '🌼', '🌾', '🍄', '🌰', '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸'],
-            food: ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑', '🍍', '🥭', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥒', '🌶️', '🌽', '🥕', '🥔', '🍠', '🥐', '🍞', '🥖', '🥨', '🧀', '🥚'],
-            activities: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🥅', '🏒', '🏑', '🏏', '⛳', '🏹', '🎣', '🥊', '🥋', '🎽', '⛸️', '🥌', '🛷', '🎿', '⛷️', '🏂', '🏋️', '🤼', '🤸', '⛹️'],
-            travel: ['✈️', '🚂', '🚁', '🚢', '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🚚', '🚛', '🚜', '🏍️', '🛴', '🚲', '🛵', '🚨', '🚔', '🚍', '🚘', '🚖', '🚡', '🚠', '🚟', '🎢'],
-            objects: ['💡', '🔦', '🕯️', '🪔', '🧯', '🛢️', '💸', '💵', '💴', '💶', '💷', '💰', '💳', '💎', '⚖️', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🔩', '⚙️', '🧰', '🧲', '🔫', '💣', '🧨', '🔪', '🗡️', '⚔️'],
-            symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🤎', '🖤', '🤍', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '⭐']
-        };
-        
-        return emojiSets[category] || emojiSets.smileys;
     }
     
     updateCanvasDimensions() {

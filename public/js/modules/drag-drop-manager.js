@@ -136,7 +136,7 @@ export class DragDropManager {
 
         // Handle repositioning first, as it can happen anywhere on the canvas
         if (dragData.type === 'element' && dragData.reposition) {
-            this.repositionElement(dragData, e);
+            this.builder.getManager('reposition').repositionElement(dragData, e, this.draggedElement);
             this.hideDropIndicator();
             return; // Stop further processing
         }
@@ -173,7 +173,7 @@ export class DragDropManager {
 
         // If a repositionable element is dropped, reposition it instead of moving it.
         if (dragData.type === 'element' && dragData.reposition) {
-            this.repositionElement(dragData, e);
+            this.builder.getManager('reposition').repositionElement(dragData, e, this.draggedElement);
         } else if (dragData.type === 'component') {
             this.createComponent(dragData, zone, e);
         } else if (dragData.type === 'element') {
@@ -198,10 +198,11 @@ export class DragDropManager {
     createComponent(dragData, dropZone, event) {
         const { componentType, componentName } = dragData;
         let componentHtml;
-        let isSticker = (componentType === 'emoji' || componentType === 'sticker');
+        let isSticker = componentType === 'sticker';
+        let isEmoji = componentType === 'emoji';
 
-        if (isSticker) {
-            componentHtml = `<span class="email-component sticker" style="font-size: 24px; position: absolute; cursor: move;">${componentName}</span>`;
+        if (isEmoji || isSticker) {
+            componentHtml = this.builder.getManager('sticker').getComponentHtml(componentType, componentName);
         } else {
             componentHtml = this.getComponentHtml(componentType);
         }
@@ -215,11 +216,11 @@ export class DragDropManager {
             newElement.setAttribute('data-component-id', this.generateComponentId());
             this.makeElementInteractive(newElement);
 
-            if (isSticker) {
+            if (isSticker || isEmoji) {
                 const canvasContent = document.getElementById('canvasContent');
                 const canvasRect = canvasContent.getBoundingClientRect();
-                const left = event.clientX - canvasRect.left - 12; // Centering adjustment
-                const top = event.clientY - canvasRect.top - 12;  // Centering adjustment
+                const left = event.clientX - canvasRect.left - 25; // Centering adjustment for 50px
+                const top = event.clientY - canvasRect.top - 25;  // Centering adjustment for 50px
                 newElement.style.left = `${left}px`;
                 newElement.style.top = `${top}px`;
                 canvasContent.appendChild(newElement);
@@ -251,11 +252,17 @@ export class DragDropManager {
             text: '<p class="text-gray-700 mb-4">Your text content goes here. Edit this text to customize your message.</p>',
             button: '<a href="#" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors">Click Here</a>',
             image: '<img src="https://via.placeholder.com/400x200" alt="Placeholder" class="w-full h-auto rounded-md">',
-            container: '<div class="container mx-auto p-4 border border-dashed border-gray-300 drop-zone min-h-[100px]"></div>',
-            row: '<div class="flex flex-wrap -mx-2 border border-dashed border-gray-300 drop-zone min-h-[80px]"></div>',
-            column: '<div class="flex-1 px-2 border border-dashed border-gray-300 drop-zone min-h-[60px]"></div>',
+            container: `
+                <div class="container-wrapper" style="background-color: transparent; padding: 10px 0;">
+                    <div class="container drop-zone" style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px dashed #ccc; min-height: 100px; position: relative;">
+                    </div>
+                </div>
+            `,
+            row: '<div class="flex flex-wrap -mx-2 border border-dashed border-gray-300 drop-zone min-h-[80px]" style="position: relative;"></div>',
+            column: '<div class="flex-1 px-2 border border-dashed border-gray-300 drop-zone min-h-[60px]" style="position: relative;"></div>',
             spacer: '<div class="h-8"></div>',
             divider: '<hr class="border-gray-300 my-6">',
+            signature: '<div class="signature-placeholder" style="padding: 2rem; border: 2px dashed #ccc; text-align: center; color: #6b7280;">Click to add signature</div>',
             social: this.getSocialIconsHtml(),
             footer: this.getFooterHtml(),
             header: this.getHeaderHtml()
@@ -370,10 +377,21 @@ export class DragDropManager {
         if (element.classList.contains('drop-zone')) {
             this.setupDropZoneEvents(element);
         }
+
+        // Also set up drop zones that are children of the new element
+        const childDropZones = element.querySelectorAll('.drop-zone');
+        childDropZones.forEach(zone => this.setupDropZoneEvents(zone));
     }
     
     handleElementDragStart(e, element) {
-        const isRepositionable = element.classList.contains('sticker');
+        const elementStyle = window.getComputedStyle(element);
+        const parentIsDropZone = element.parentNode.classList.contains('drop-zone');
+        
+        // Define tags that can be repositioned within a container
+        const repositionableTags = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'IMG', 'A', 'BUTTON'];
+        const isRepositionableElement = repositionableTags.includes(element.tagName) && parentIsDropZone;
+        
+        const isRepositionable = element.classList.contains('sticker') || elementStyle.position === 'absolute' || isRepositionableElement;
         
         let dragData = {
             type: 'element',
@@ -499,6 +517,12 @@ export class DragDropManager {
             return;
         }
 
+        // Prevent moving an element inside itself
+        if (elementToMove === dropZone || elementToMove.contains(dropZone)) {
+            this.builder.getManager('notification')?.show('error', "You can't move a container inside itself.");
+            return;
+        }
+
         const originalParent = elementToMove.parentNode;
         const originalNextSibling = elementToMove.nextSibling;
 
@@ -521,41 +545,5 @@ export class DragDropManager {
 
         this.builder.getManager('template')?.markAsModified();
         this.builder.getManager('notification')?.show('info', 'Element moved');
-    }
-
-    repositionElement(dragData, event) {
-        const elementId = dragData.elementId;
-        if (!elementId) return;
-
-        const elementToMove = document.querySelector(`[data-component-id="${elementId}"]`);
-        if (!elementToMove) {
-            console.warn(`Could not find element to reposition: ${elementId}`);
-            return;
-        }
-
-        const canvasContent = document.getElementById('canvasContent');
-        const canvasRect = canvasContent.getBoundingClientRect();
-
-        // Calculate new position based on drop point and initial mouse offset
-        const newLeft = event.clientX - canvasRect.left - (dragData.offsetX || 0);
-        const newTop = event.clientY - canvasRect.top - (dragData.offsetY || 0);
-        
-        const oldPosition = {
-            left: elementToMove.style.left,
-            top: elementToMove.style.top,
-        };
-
-        elementToMove.style.left = `${newLeft}px`;
-        elementToMove.style.top = `${newTop}px`;
-        elementToMove.style.position = 'absolute'; // Ensure it remains absolutely positioned
-
-        this.builder.getManager('history')?.recordAction('reposition', {
-            elementId,
-            oldPosition,
-            newPosition: { left: `${newLeft}px`, top: `${newTop}px` },
-        });
-
-        this.builder.getManager('template')?.markAsModified();
-        this.builder.getManager('notification')?.show('info', 'Element repositioned');
     }
 } 

@@ -8,6 +8,12 @@ import { HistoryManager } from './modules/history-manager.js';
 import { NotificationManager } from './modules/notification-manager.js';
 import { ModalManager } from './modules/modal-manager.js';
 import { ToolbarManager } from './modules/toolbar-manager.js';
+import { StickerManager } from './modules/sticker-manager.js';
+import { RotationManager } from './modules/rotation-manager.js';
+import { HeaderProperties } from './modules/header-properties.js';
+import { ImageProperties } from './modules/image-properties.js';
+import { RepositionManager } from './modules/reposition-manager.js';
+import { SignatureManager } from './modules/signature-manager.js';
 
 class MailTemplateBuilder {
     constructor() {
@@ -33,6 +39,10 @@ class MailTemplateBuilder {
             this.managers.dragDrop = new DragDropManager();
             this.managers.toolbar = new ToolbarManager();
             this.managers.event = new EventHandler();
+            this.managers.sticker = new StickerManager();
+            this.managers.rotation = new RotationManager();
+            this.managers.reposition = new RepositionManager();
+            this.managers.signature = new SignatureManager();
             
             // Initialize components
             await this.initializeManagers();
@@ -64,7 +74,11 @@ class MailTemplateBuilder {
             'properties',
             'toolbar',
             'dragDrop',
-            'component'
+            'component',
+            'sticker',
+            'rotation',
+            'reposition',
+            'signature'
         ];
         
         for (const managerName of initOrder) {

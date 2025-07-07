@@ -6,7 +6,7 @@
     </div>
     
     <!-- Properties Content -->
-    <div id="propertiesContent" class="p-4">
+    <div id="propertiesContent" class="p-4 flex-1  overflow-y-auto">
         <!-- Default State - No Selection -->
         <div id="noSelection" class="text-center py-8">
             <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,3 +34,10 @@
         </div>
     </div>
 </aside> 
+
+<style>
+    #propertiesPanel {
+        height: calc(100vh - var(--header-height) - 120px);
+        overflow-y: auto;
+    }
+</style>

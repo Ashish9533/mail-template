@@ -34,6 +34,7 @@
         <x-mail-builder.modals.new-template-modal />
         <x-mail-builder.modals.load-modal />
         <x-mail-builder.modals.code-modal />
+        <x-mail-builder.modals.signature-modal />
         
         <!-- Notification Component -->
         <x-mail-builder.notification />

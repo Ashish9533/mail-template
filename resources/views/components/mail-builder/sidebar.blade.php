@@ -26,6 +26,10 @@
             <x-mail-builder.component-item type="section" name="Section" icon="section" />
             <x-mail-builder.component-item type="spacer" name="Spacer" icon="spacer" />
             <x-mail-builder.component-item type="grid" name="Grid" icon="grid" />
+            <x-mail-builder.component-item type="divider" name="Divider" />
+            <x-mail-builder.component-item type="social" name="Social Icons" />
+            <x-mail-builder.component-item type="footer" name="Footer" />
+            <x-mail-builder.component-item type="signature" name="Signature" />
         </x-mail-builder.component-category>
         
         <!-- Content Components -->
@@ -38,16 +42,11 @@
             <x-mail-builder.component-item type="link" name="Link" icon="link" />
             <x-mail-builder.component-item type="list" name="List" icon="list" />
             <x-mail-builder.component-item type="table" name="Table" icon="table" />
-            <x-mail-builder.component-item type="signature" name="Signature" icon="signature" />
         </x-mail-builder.component-category>
         
         <!-- Advanced Components -->
         <x-mail-builder.component-category title="Advanced" icon="advanced">
             <x-mail-builder.component-item type="header" name="Header" icon="header" />
-            <x-mail-builder.component-item type="footer" name="Footer" icon="footer" />
-            <x-mail-builder.component-item type="navigation" name="Navigation" icon="navigation" />
-            <x-mail-builder.component-item type="social" name="Social Icons" icon="social" />
-            <x-mail-builder.component-item type="divider" name="Divider" icon="divider" />
             <x-mail-builder.component-item type="card" name="Card" icon="card" />
             <x-mail-builder.component-item type="banner" name="Banner" icon="banner" />
             <x-mail-builder.component-item type="hero" name="Hero Section" icon="hero" />

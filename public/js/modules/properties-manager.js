@@ -1,4 +1,7 @@
-// Properties Manager Module
+import { HeaderProperties } from './header-properties.js';
+import { ImageProperties } from './image-properties.js';
+import { SignatureProperties } from './signature-properties.js';
+
 export class PropertiesManager {
     constructor() {
         this.builder = null;
@@ -14,13 +17,9 @@ export class PropertiesManager {
     setupPropertyPanelEvents() {
         const panel = document.getElementById('propertiesPanel');
         if (panel) {
-            panel.addEventListener('input', (e) => {
-                this.handlePropertyChange(e);
-            });
-            
-            panel.addEventListener('change', (e) => {
-                this.handlePropertyChange(e);
-            });
+            panel.addEventListener('input', (e) => this.handlePropertyChange(e));
+            panel.addEventListener('change', (e) => this.handlePropertyChange(e));
+            panel.addEventListener('click', (e) => this.handlePropertyClick(e));
         }
     }
     
@@ -63,28 +62,45 @@ export class PropertiesManager {
     }
     
     getElementProperties(element) {
+        let properties = this.getBaseProperties(element);
         const tagName = element.tagName.toLowerCase();
-        const computedStyle = window.getComputedStyle(element);
-        
-        const baseProperties = {
-            content: {
-                label: 'Content',
-                type: 'textarea',
-                value: this.getElementContent(element)
-            },
-            fontSize: {
-                label: 'Font Size',
+
+        switch (tagName) {
+            case 'header':
+                properties = { ...properties, ...HeaderProperties.getDefinition(element) };
+                break;
+            case 'img':
+                properties = { ...properties, ...ImageProperties.getDefinition(element) };
+                break;
+            case 'a':
+                properties = { ...properties, ...this.getLinkProperties(element) };
+                break;
+            case 'button':
+                properties = { ...properties, ...this.getButtonProperties(element) };
+                break;
+        }
+
+        if (element.classList.contains('signature-placeholder') || element.classList.contains('signature-applied')) {
+            properties = { ...properties, ...SignatureProperties.getDefinition(element) };
+        }
+
+        if (element.classList.contains('sticker')) {
+            properties.rotation = {
+                label: 'Rotation',
                 type: 'range',
-                value: parseInt(computedStyle.fontSize) || 16,
-                min: 8,
-                max: 72,
-                unit: 'px'
-            },
-            color: {
-                label: 'Text Color',
-                type: 'color',
-                value: this.rgbToHex(computedStyle.color) || '#000000'
-            },
+                value: this.getCurrentRotation(element),
+                min: 0,
+                max: 360,
+                unit: '°'
+            };
+        }
+        
+        return properties;
+    }
+    
+    getBaseProperties(element) {
+        const computedStyle = window.getComputedStyle(element);
+        let base = {
             backgroundColor: {
                 label: 'Background Color',
                 type: 'color',
@@ -115,41 +131,30 @@ export class PropertiesManager {
                 unit: 'px'
             }
         };
-        
-        // Add element-specific properties
-        switch (tagName) {
-            case 'img':
-                return { ...baseProperties, ...this.getImageProperties(element) };
-            case 'a':
-                return { ...baseProperties, ...this.getLinkProperties(element) };
-            case 'button':
-                return { ...baseProperties, ...this.getButtonProperties(element) };
-            default:
-                return baseProperties;
-        }
-    }
-    
-    getImageProperties(element) {
-        return {
-            src: {
-                label: 'Image URL',
-                type: 'url',
-                value: element.src || ''
-            },
-            alt: {
-                label: 'Alt Text',
-                type: 'text',
-                value: element.alt || ''
-            },
-            width: {
-                label: 'Width',
+
+        // Text properties only for non-image elements
+        if(element.tagName !== 'IMG' && !element.classList.contains('signature-placeholder')) {
+            base.content = {
+                label: 'Content',
+                type: 'textarea',
+                value: this.getElementContent(element)
+            };
+            base.fontSize = {
+                label: 'Font Size',
                 type: 'range',
-                value: parseInt(element.style.width) || element.offsetWidth,
-                min: 50,
-                max: 800,
+                value: parseInt(computedStyle.fontSize) || 16,
+                min: 8,
+                max: 72,
                 unit: 'px'
-            }
-        };
+            };
+            base.color = {
+                label: 'Text Color',
+                type: 'color',
+                value: this.rgbToHex(computedStyle.color) || '#000000'
+            };
+        }
+        
+        return base;
     }
     
     getLinkProperties(element) {
@@ -188,6 +193,19 @@ export class PropertiesManager {
     
     renderPropertyControls(properties) {
         return Object.entries(properties).map(([key, prop]) => {
+            if (!prop) return '';
+            if (prop.type === 'group') {
+                const groupPropertiesHtml = this.renderPropertyControls(prop.properties);
+                return `
+                    <div class="w-full border-t border-gray-200 pt-4 mt-4">
+                        <h4 class="text-md font-semibold text-gray-800 mb-3">${prop.label}</h4>
+                        <div class="space-y-4">
+                            ${groupPropertiesHtml}
+                        </div>
+                    </div>
+                `;
+            }
+            
             return `
                 <div class="property-group mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">${prop.label}</label>
@@ -217,7 +235,7 @@ export class PropertiesManager {
             case 'range':
                 return `
                     <div class="flex items-center space-x-3">
-                        <input type="range" data-property="${key}" value="${prop.value}" min="${prop.min}" max="${prop.max}" class="flex-1">
+                        <input type="range" data-property="${key}" value="${prop.value}" min="${prop.min}" max="${prop.max}" ${prop.step ? `step="${prop.step}"` : ''} class="flex-1">
                         <span class="text-sm text-gray-600 w-16">${prop.value}${prop.unit || ''}</span>
                     </div>
                 `;
@@ -225,6 +243,9 @@ export class PropertiesManager {
             case 'select':
                 const options = prop.options.map(opt => `<option value="${opt.value}" ${opt.value === prop.value ? 'selected' : ''}>${opt.label}</option>`).join('');
                 return `<select data-property="${key}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">${options}</select>`;
+            
+            case 'button':
+                return `<button type="button" data-property="${key}" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">${prop.buttonText}</button>`;
             
             default:
                 return `<input type="text" data-property="${key}" value="${prop.value}" class="w-full px-3 py-2 border border-gray-300 rounded-md">`;
@@ -255,22 +276,57 @@ export class PropertiesManager {
             const valueSpan = input.parentNode.querySelector('span');
             input.addEventListener('input', () => {
                 const unit = input.dataset.unit || '';
-                valueSpan.textContent = input.value + unit;
+                valueSpan.textContent = input.value + (unit || '');
             });
         });
     }
     
+    handlePropertyClick(e) {
+        const button = e.target.closest('button[data-property]');
+        if (!button) return;
+
+        e.preventDefault();
+        const propertyKey = button.dataset.property;
+        const prop = this.findPropertyDefinition(propertyKey);
+        
+        if (prop && typeof prop.onClick === 'function') {
+            prop.onClick(this.builder);
+        }
+    }
+    
     handlePropertyChange(e) {
         if (!this.currentElement || !e.target.dataset.property) return;
+
+        // Button clicks are handled by a separate event listener
+        if (e.target.matches('button[data-property]')) {
+            return;
+        }
         
         const property = e.target.dataset.property;
-        const value = e.target.value;
+        let value = e.target.value;
         
+        if (e.target.type === 'range') {
+            const step = e.target.step;
+            if (step && step.includes('.')) {
+                value = parseFloat(value).toFixed(step.split('.')[1].length);
+            }
+        }
+
         this.applyPropertyToElement(this.currentElement, property, value);
         this.builder.getManager('template')?.markAsModified();
     }
     
     applyPropertyToElement(element, property, value) {
+        if (HeaderProperties.applyStyle(element, property, value)) {
+            return;
+        }
+        if (ImageProperties.applyStyle(element, property, value)) {
+            return;
+        }
+        if (SignatureProperties.applyStyle(element, property, value)) {
+            return;
+        }
+
         switch (property) {
             case 'content':
                 this.setElementContent(element, value);
@@ -293,35 +349,68 @@ export class PropertiesManager {
             case 'borderRadius':
                 element.style.borderRadius = value + 'px';
                 break;
-            case 'src':
-                if (element.tagName === 'IMG') element.src = value;
-                break;
-            case 'alt':
-                if (element.tagName === 'IMG') element.alt = value;
-                break;
             case 'href':
                 if (element.tagName === 'A') element.href = value;
                 break;
             case 'target':
                 if (element.tagName === 'A') element.target = value;
                 break;
-            case 'width':
-                element.style.width = value + 'px';
+            case 'rotation':
+                element.style.transform = `rotate(${value}deg)`;
+                this.builder.getManager('component')?.updateSelectionBox(element);
+                this.builder.getManager('component')?.showResizeHandles(element);
                 break;
+            default:
+                // Fallback for unhandled properties, particularly for custom components
+                if(!HeaderProperties.applyStyle(element, property, value)) {
+                    // If not handled, you could log this for debugging
+                    console.warn(`Unhandled property: ${property}`);
+                }
         }
     }
     
     getElementContent(element) {
         if (element.tagName === 'IMG') return element.alt || '';
-        return element.textContent || element.innerHTML || '';
+        
+        // For headers, target the H1 tag for the main content
+        if (element.tagName === 'HEADER') {
+            const title = element.querySelector('h1');
+            if (title) {
+                return title.innerHTML.replace(/<br\s*\/?>/gi, '\\n');
+            }
+        }
+
+        let content = element.innerHTML || '';
+        return content.replace(/<br\s*\/?>/gi, '\\n');
     }
     
     setElementContent(element, content) {
         if (element.tagName === 'IMG') {
             element.alt = content;
-        } else {
-            element.textContent = content;
+        } 
+        // For headers, target the H1 tag
+        else if (element.tagName === 'HEADER') {
+            const title = element.querySelector('h1');
+            if(title) {
+                title.innerHTML = content.replace(/\\n/g, '<br>');
+            }
         }
+        else {
+            element.innerHTML = content.replace(/\\n/g, '<br>');
+        }
+    }
+    
+    getCurrentRotation(element) {
+        const transform = window.getComputedStyle(element).transform;
+        if (transform === 'none') return 0;
+        
+        const matrix = transform.match(/^matrix\((.+)\)$/);
+        if (matrix) {
+            const values = matrix[1].split(', ').map(parseFloat);
+            let angle = Math.round(Math.atan2(values[1], values[0]) * (180 / Math.PI));
+            return angle < 0 ? angle + 360 : angle;
+        }
+        return 0;
     }
     
     rgbToHex(rgb) {
@@ -339,5 +428,26 @@ export class PropertiesManager {
     
     isValidHex(hex) {
         return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex);
+    }
+    
+    findPropertyDefinition(propertyKey) {
+        const properties = this.getElementProperties(this.currentElement);
+        let foundProp = null;
+
+        function find(props) {
+            for (const [key, prop] of Object.entries(props)) {
+                if (key === propertyKey) {
+                    foundProp = prop;
+                    return;
+                }
+                if (prop.type === 'group') {
+                    find(prop.properties);
+                }
+                if (foundProp) return;
+            }
+        }
+
+        find(properties);
+        return foundProp;
     }
 } 
