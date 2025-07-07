@@ -4,170 +4,255 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\View\View;
+use App\Services\MailTemplateService;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class MailTemplateController extends Controller
 {
+    protected $mailTemplateService;
+
+    public function __construct(MailTemplateService $mailTemplateService)
+    {
+        $this->mailTemplateService = $mailTemplateService;
+    }
+
+    /**
+     * Display the mail template dashboard
+     */
+    public function dashboard()
+    {
+        $stats = $this->mailTemplateService->getTemplateStats();
+        $templates = $this->mailTemplateService->getTemplatesList();
+        
+        return view('mail-template.dashboard', compact('stats', 'templates'));
+    }
+
     /**
      * Display the mail template builder
      */
-    public function index(): View
+    public function builder(Request $request)
     {
-        return view('mail-template.builder');
-    }
-
-    /**
-     * Save a mail template
-     */
-    public function save(Request $request): JsonResponse
-    {
-        try {
-            // Log the incoming request for debugging
-            \Log::info('Template save request received', [
-                'method' => $request->method(),
-                'headers' => $request->headers->all(),
-                'input' => $request->input()
-            ]);
-
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'html' => 'required|string',
-                'css' => 'nullable|string',
-                'config' => 'nullable|array',
-                'category' => 'nullable|string|max:100',
-                'description' => 'nullable|string|max:1000',
-                'audience' => 'nullable|string|max:255',
-                'subject' => 'nullable|string|max:255',
-                'variables' => 'nullable|array'
-            ]);
-
-            // Save to database or file system
-            $template = [
-                'id' => uniqid(),
-                'name' => $request->name,
-                'html' => $request->html,
-                'css' => $request->css,
-                'config' => $request->config,
-                'category' => $request->category ?? 'custom',
-                'description' => $request->description,
-                'audience' => $request->audience,
-                'subject' => $request->subject,
-                'variables' => $request->variables ?? [],
-                'created_at' => now()->toISOString(),
-                'updated_at' => now()->toISOString()
-            ];
-
-            // For now, save to storage as JSON (you can implement database later)
-            $templates = $this->getStoredTemplates();
-            $templates[] = $template;
-            $this->saveTemplatesToStorage($templates);
-
-            \Log::info('Template saved successfully', ['template_id' => $template['id']]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Template saved successfully',
-                'template' => $template
-            ]);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::warning('Template save validation failed', ['errors' => $e->errors()]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-
-        } catch (\Exception $e) {
-            \Log::error('Template save failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while saving the template: ' . $e->getMessage()
-            ], 500);
+        $templateName = $request->get('template', '');
+        $templateId = $request->get('id');
+        
+        $template = null;
+        if ($templateId) {
+            $template = $this->mailTemplateService->getTemplate($templateId);
         }
+        
+        return view('mail-template.builder', compact('templateName', 'template'));
     }
 
     /**
-     * Load all templates
+     * Get all templates
      */
-    public function templates(): JsonResponse
+    public function index(): JsonResponse
     {
-        $templates = $this->getStoredTemplates();
+        $templates = $this->mailTemplateService->getTemplatesList();
         return response()->json($templates);
     }
 
     /**
-     * Load a specific template
+     * Get specific template
      */
-    public function load(string $id): JsonResponse
+    public function show(string $id): JsonResponse
     {
-        $templates = $this->getStoredTemplates();
-        $template = collect($templates)->firstWhere('id', $id);
-
+        $template = $this->mailTemplateService->getTemplate($id);
+        
         if (!$template) {
             return response()->json(['error' => 'Template not found'], 404);
         }
-
+        
         return response()->json($template);
     }
 
     /**
-     * Delete a template
+     * Save template
      */
-    public function delete(string $id): JsonResponse
+    public function store(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'html' => 'required|string',
+            'css' => 'nullable|string',
+            'variables' => 'nullable|array'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 400);
+        }
+
+        $templates = $this->getStoredTemplates();
+        
+        $template = [
+            'id' => uniqid('tpl_'),
+            'name' => $request->name,
+            'html' => $request->html,
+            'css' => $request->css ?? '',
+            'variables' => $request->variables ?? [],
+            'created_at' => now()->toISOString(),
+            'updated_at' => now()->toISOString()
+        ];
+
+        $templates[] = $template;
+        $this->saveTemplates($templates);
+
+        return response()->json(['message' => 'Template saved successfully', 'template' => $template]);
+    }
+
+    /**
+     * Update template
+     */
+    public function update(Request $request, string $id): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'html' => 'required|string',
+            'css' => 'nullable|string',
+            'variables' => 'nullable|array'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 400);
+        }
+
+        $templates = $this->getStoredTemplates();
+        $templateIndex = collect($templates)->search(function ($template) use ($id) {
+            return $template['id'] === $id;
+        });
+
+        if ($templateIndex === false) {
+            return response()->json(['error' => 'Template not found'], 404);
+        }
+
+        $templates[$templateIndex] = array_merge($templates[$templateIndex], [
+            'name' => $request->name,
+            'html' => $request->html,
+            'css' => $request->css ?? '',
+            'variables' => $request->variables ?? [],
+            'updated_at' => now()->toISOString()
+        ]);
+
+        $this->saveTemplates($templates);
+
+        return response()->json(['message' => 'Template updated successfully', 'template' => $templates[$templateIndex]]);
+    }
+
+    /**
+     * Delete template
+     */
+    public function destroy(string $id): JsonResponse
     {
         $templates = $this->getStoredTemplates();
-        $templates = array_filter($templates, fn($template) => $template['id'] !== $id);
-        $this->saveTemplatesToStorage(array_values($templates));
+        $templates = array_filter($templates, function ($template) use ($id) {
+            return $template['id'] !== $id;
+        });
 
-        return response()->json(['success' => true, 'message' => 'Template deleted successfully']);
+        $this->saveTemplates(array_values($templates));
+
+        return response()->json(['message' => 'Template deleted successfully']);
     }
 
     /**
      * Preview template
      */
-    public function preview(Request $request): View
+    public function preview(Request $request, string $id): JsonResponse
     {
-        $html = $request->input('html', '');
-        $css = $request->input('css', '');
+        try {
+            $sampleData = $request->get('data', []);
+            $html = $this->mailTemplateService->previewTemplate($id, $sampleData);
+            
+            return response()->json(['html' => $html]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Get template variables
+     */
+    public function variables(string $id): JsonResponse
+    {
+        $variables = $this->mailTemplateService->getTemplateVariables($id);
+        return response()->json(['variables' => $variables]);
+    }
+
+    /**
+     * Upload image for templates
+     */
+    public function uploadImage(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 400);
+        }
+
+        $file = $request->file('image');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $path = $file->storeAs('mail-template-images', $filename, 'public');
         
-        return view('mail-template.preview', compact('html', 'css'));
+        return response()->json([
+            'message' => 'Image uploaded successfully',
+            'url' => Storage::url($path),
+            'filename' => $filename
+        ]);
     }
 
     /**
      * Export template as HTML
      */
-    public function export(Request $request)
+    public function export(string $id): JsonResponse
     {
-        $html = $request->input('html', '');
-        $css = $request->input('css', '');
-        $name = $request->input('name', 'mail-template');
+        $template = $this->mailTemplateService->getTemplate($id);
+        
+        if (!$template) {
+            return response()->json(['error' => 'Template not found'], 404);
+        }
 
-        $fullHtml = "<!DOCTYPE html>
-<html>
-<head>
-    <meta charset=\"UTF-8\">
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-    <title>{$name}</title>
-    <style>{$css}</style>
-</head>
-<body>
-{$html}
-</body>
-</html>";
+        $html = $template['html'];
+        $css = $template['css'] ?? '';
+        
+        if (!empty($css)) {
+            $html = "<style>{$css}</style>" . $html;
+        }
 
-        return response($fullHtml)
-            ->header('Content-Type', 'text/html')
-            ->header('Content-Disposition', "attachment; filename=\"{$name}.html\"");
+        return response()->json([
+            'html' => $html,
+            'filename' => $template['name'] . '.html'
+        ]);
     }
 
     /**
-     * Get stored templates from file
+     * Duplicate template
+     */
+    public function duplicate(string $id): JsonResponse
+    {
+        $template = $this->mailTemplateService->getTemplate($id);
+        
+        if (!$template) {
+            return response()->json(['error' => 'Template not found'], 404);
+        }
+
+        $templates = $this->getStoredTemplates();
+        
+        $newTemplate = $template;
+        $newTemplate['id'] = uniqid('tpl_');
+        $newTemplate['name'] = $template['name'] . ' (Copy)';
+        $newTemplate['created_at'] = now()->toISOString();
+        $newTemplate['updated_at'] = now()->toISOString();
+
+        $templates[] = $newTemplate;
+        $this->saveTemplates($templates);
+
+        return response()->json(['message' => 'Template duplicated successfully', 'template' => $newTemplate]);
+    }
+
+    /**
+     * Get stored templates
      */
     private function getStoredTemplates(): array
     {
@@ -179,9 +264,9 @@ class MailTemplateController extends Controller
     }
 
     /**
-     * Save templates to file
+     * Save templates to storage
      */
-    private function saveTemplatesToStorage(array $templates): void
+    private function saveTemplates(array $templates): void
     {
         $path = storage_path('app/mail-templates.json');
         file_put_contents($path, json_encode($templates, JSON_PRETTY_PRINT));
